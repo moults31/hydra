@@ -2,6 +2,10 @@
 #
 # SPDX-License-Identifier: MIT
 
+"""
+Configuration file for HAL. User must set values that match the physical setup.
+"""
+
 # Temperature sensor hardware config
 TEMP_SENSOR = 'tmp102'
 TEMP_SENSOR_I2C_ID = 0
