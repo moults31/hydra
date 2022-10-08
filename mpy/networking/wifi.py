@@ -14,15 +14,17 @@ import network
 import mpy.secrets
 
 class Wifi:
-    secrets = mpy.secrets.get_secrets()
-
-    ssid = secrets['ssid']
-    password = secrets['password']
-
     def __init__(self):
         """
         Connect to wifi. Raise RuntimeError on failure to connect.
         """
+        # Grab ssid and password from user-populated secrets
+        self.secrets = mpy.secrets.get_secrets()
+        self.ssid = self.secrets['ssid']
+        self.password = self.secrets['password']
+
+        print(f"Trying to connect to {self.ssid}")
+
         wlan = network.WLAN(network.STA_IF)
         wlan.active(True)
         wlan.connect(self.ssid, self.password)
