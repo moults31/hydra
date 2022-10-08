@@ -21,4 +21,11 @@ if __name__ == '__main__':
 
     while True:
         pin.toggle()
+        temp = temp_sensor.read()
+        print(f"{temp=}")
+        light = ambient_light_sensor.read_light()
+        lux = ambient_light_sensor.read_lux()
+        print(f"{light=}")
+        print(f"{lux=}")
+        print("\n")
         time.sleep(1)
