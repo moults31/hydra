@@ -17,17 +17,18 @@ if __name__ == '__main__':
 
     # TODO: Read switch or something to decide which app to run.
     # For now hardcode it.
-    # app = 'fermentation_tracker'
+    app = 'fermentation_tracker'
     # app = 'coldcrash_tracker'
-    app = 'asana_tester'
+    # app = 'asana_tester'
     # app = 'sensor_tester'
 
     wifi_connection = wifi.Wifi()
 
     if app == 'fermentation_tracker':
         ft = fermentation_tracker.Fermentation_tracker(
-            warning_thresh_lux=50.0
-            warning_thresh_temp=26.0
+            warning_thresh_lux=50.0,
+            warning_thresh_temp=26.0,
+            sample_period_sec=1
         )
         ft.run_blocking()
     elif app == 'coldcrash_tracker':

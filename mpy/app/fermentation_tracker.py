@@ -12,6 +12,8 @@ import time
 import mpy.hal.adapter.temp_sensor
 import mpy.hal.adapter.ambient_light_sensor
 
+import mpy.util.simple_asana_handler
+
 class Fermentation_tracker:
     """
     App for tracking and reporting fermentation stats, including warnings
@@ -35,10 +37,11 @@ class Fermentation_tracker:
         self.warning_thresh_temp = warning_thresh_temp
         self.warning_thresh_lux = warning_thresh_lux
 
-        # Grab hardware resources
+        # Grab resources
         self.pin = Pin("LED", Pin.OUT)
         self.temp_sensor = mpy.hal.adapter.temp_sensor.Temp_sensor()
         self.ambient_light_sensor = mpy.hal.adapter.ambient_light_sensor.Ambient_light_sensor()
+        self.asana_handler = mpy.util.simple_asana_handler.Simple_asana_handler()
 
     def run_blocking(self):
         """
@@ -76,19 +79,31 @@ class Fermentation_tracker:
     def report_warning(self):
         """
         Warn if the most recently read values exceed their warning thresholds.
+        Will only warn once for each violation.
+        TODO: Add hysteresis
         """
-        if (self.temp > self.warning_thresh_temp) and not self.warning_state_is_active_temp:
-            self.warning_state_is_active_temp = True
-            print(f"WARNING: Temp {self.temp} > thresh {self.warning_thresh_temp}")
-            # TODO: send warning to Asana
+        # Temperature warning
+        if (self.temp > self.warning_thresh_temp):
+            if not self.warning_state_is_active_temp:
+                self.warning_state_is_active_temp = True
+                warn_str = f"WARNING: Temp {self.temp} > thresh {self.warning_thresh_temp}"
+                print(warn_str)
+
+                # Send warning to Asana
+                self.asana_handler.add_comment_on_active_task(warn_str)
         else:
             # Reset warning state
             self.warning_state_is_active_temp = False
 
-        if (self.lux > self.warning_thresh_lux) and not self.warning_state_is_active_lux:
-            self.warning_state_is_active_lux = True
-            print(f"WARNING: Lux {self.lux} > thresh {self.warning_thresh_lux}")
-            # TODO: send warning to Asana
+        # Ambient light warning
+        if (self.lux > self.warning_thresh_lux):
+            if not self.warning_state_is_active_lux:
+                self.warning_state_is_active_lux = True
+                warn_str = f"WARNING: Lux {self.lux} > thresh {self.warning_thresh_lux}"
+                print(warn_str)
+
+                # Send warning to Asana
+                self.asana_handler.add_comment_on_active_task(warn_str)
         else:
             # Reset warning state
             self.warning_state_is_active_lux = False
