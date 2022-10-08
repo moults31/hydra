@@ -21,4 +21,6 @@ if __name__ == '__main__':
 
     while True:
         pin.toggle()
+        temp = temp_sensor.read()
+        print(f"{temp=}")
         time.sleep(1)
