@@ -10,19 +10,20 @@ import mpy.test.sensor_tester as sensor_tester
 
 import mpy.networking.wifi as wifi
 
-if __name__ == '__main__':
-    """
-    Main entry point to micropython program.
-    """
+from machine import Pin
+pin = Pin("LED", Pin.OUT)
 
+
+def main():
     # TODO: Read switch or something to decide which app to run.
     # For now hardcode it.
     app = 'fermentation_tracker'
     # app = 'coldcrash_tracker'
     # app = 'asana_tester'
     # app = 'sensor_tester'
-
+    pin.toggle()
     wifi_connection = wifi.Wifi()
+    pin.toggle()
 
     if app == 'fermentation_tracker':
         ft = fermentation_tracker.Fermentation_tracker(
@@ -40,3 +41,9 @@ if __name__ == '__main__':
         at = sensor_tester.Sensor_tester()
     else:
         raise Exception("No app selected!")
+
+if __name__ == '__main__':
+    """
+    Main entry point to micropython program.
+    """
+    main()

@@ -60,7 +60,7 @@ class Simple_asana_handler:
         # Get and return specified task
         # TODO: Find a way to figure out which task is active for coldcrash or fermentation.
         # Maybe magic section in Asana to read from
-        active_task = next(task for task in tasks if task['name'] == 'Hydra dev')
+        active_task = next(task for task in tasks if task['name'] == 'Hydra sandbox')
         return active_task['gid']
 
     def update_active_task_description(self, desc):
