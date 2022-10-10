@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: MIT
 
+import sys
+
 import mpy.app.fermentation_tracker as fermentation_tracker
 import mpy.app.coldcrash_tracker as coldcrash_tracker
 
@@ -10,9 +12,11 @@ import mpy.test.sensor_tester as sensor_tester
 
 import mpy.networking.wifi as wifi
 
-from machine import Pin
-pin = Pin("LED", Pin.OUT)
+IS_LINUX = (sys.platform == 'linux')
 
+if not IS_LINUX:
+    from machine import Pin
+    pin = Pin("LED", Pin.OUT)
 
 def main():
     # TODO: Read switch or something to decide which app to run.
@@ -21,9 +25,10 @@ def main():
     # app = 'coldcrash_tracker'
     # app = 'asana_tester'
     # app = 'sensor_tester'
-    pin.toggle()
-    wifi_connection = wifi.Wifi()
-    pin.toggle()
+    if not IS_LINUX:
+        pin.toggle()
+        wifi_connection = wifi.Wifi()
+        pin.toggle()
 
     if app == 'fermentation_tracker':
         ft = fermentation_tracker.Fermentation_tracker(

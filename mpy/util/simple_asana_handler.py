@@ -7,7 +7,6 @@ Simple handler for building application-specific Asana requests
 and sending them to the simple API
 """
 
-from urequests import get
 import mpy.secrets as secrets
 import mpy.util.simple_asana_api as api
 
