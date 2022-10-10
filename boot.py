@@ -12,7 +12,7 @@ if __name__ == '__main__':
     """
     Micropython auto-run entry point
     """
-    auto_run = IS_LINUX
+    auto_run = True
     if auto_run:
         # Jump to real main
         mpy.main.main()

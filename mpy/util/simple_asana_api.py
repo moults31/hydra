@@ -72,6 +72,19 @@ def update_task(task_gid, token, params):
 
     return requests.put(endpoint, json=data, headers=headers).json()['data']
 
+def get_task(task_gid, token):
+    """
+    Makes a get request to get the parameters of the specified task
+    """
+    endpoint = ENDPOINT_BASE + f"/tasks/{task_gid}"
+    headers = _build_header(
+        token, 
+        content_type='application/json',
+        accept='application/json'
+    )
+
+    return requests.get(endpoint, headers=headers).json()['data']
+
 def add_comment_on_task(task_gid, token, params):
     """
     Adds a comment to the task. It will be authored by the authenticated user.
