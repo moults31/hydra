@@ -6,13 +6,18 @@
 App for tracking and reporting fermentation stats, including warnings
 """
 
-from machine import Pin
+import sys
 import time
 
 import mpy.hal.adapter.temp_sensor
 import mpy.hal.adapter.ambient_light_sensor
 
 import mpy.util.simple_asana_handler
+
+IS_LINUX = (sys.platform == 'linux')
+
+if not IS_LINUX:
+    from machine import Pin
 
 class Fermentation_tracker:
     """
@@ -38,7 +43,8 @@ class Fermentation_tracker:
         self.warning_thresh_lux = warning_thresh_lux
 
         # Grab resources
-        self.pin = Pin("LED", Pin.OUT)
+        if not IS_LINUX:
+            self.pin = Pin("LED", Pin.OUT)
         self.temp_sensor = mpy.hal.adapter.temp_sensor.Temp_sensor()
         self.ambient_light_sensor = mpy.hal.adapter.ambient_light_sensor.Ambient_light_sensor()
         self.asana_handler = mpy.util.simple_asana_handler.Simple_asana_handler()
@@ -61,7 +67,8 @@ class Fermentation_tracker:
         Warn if necessary.
         """
         # Toggle LED
-        self.pin.toggle()
+        if not IS_LINUX:
+            self.pin.toggle()
 
         # Read sensors
         self.temp = self.temp_sensor.read()

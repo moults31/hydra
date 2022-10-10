@@ -16,7 +16,11 @@ class Temp_sensor:
         Initialize with driver chosen in config.py
         """
         if mpy.hal.config.TEMP_SENSOR == 'tmp102':
+            import mpy.hal.driver.tmp102 as tmp102
             self._sensor_driver = tmp102.Temp_sensor_driver()
+        elif mpy.hal.config.TEMP_SENSOR == 'mock':
+            import mpy.hal.driver.mock_temperature_sensor as mock_temperature_sensor
+            self._sensor_driver = mock_temperature_sensor.Temperature_sensor_driver()
         else:
             raise Exception("No valid temperature sensor selected")
 
@@ -28,6 +32,3 @@ class Temp_sensor:
             return self._sensor_driver.read()
         else:
             raise NotImplementedError(f"This method must be implemented by driver for {mpy.hal.config.TEMP_SENSOR}")
-
-# Import drivers. Must be done after class def so that they can inherit from Temp_sensor.
-import mpy.hal.driver.tmp102 as tmp102

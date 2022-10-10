@@ -14,7 +14,6 @@ import json
 ENDPOINT_BASE = "https://app.asana.com/api/1.0"
 ENDPOINT_ME = "https://app.asana.com/api/1.0/users/me"
 
-
 def _build_header(token, content_type=None, accept=None):
     headers = {}
 

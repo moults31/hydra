@@ -6,10 +6,15 @@
 App for tracking coldcrash temperature, and reporting as soon as it's complete
 """
 
-from machine import Pin
+import sys
 import time
 
 import mpy.hal.adapter.temp_sensor
+
+IS_LINUX = (sys.platform == 'linux')
+
+if not IS_LINUX:
+    from machine import Pin
 
 class Coldcrash_tracker:
     """
@@ -24,7 +29,8 @@ class Coldcrash_tracker:
         self.sample_period_sec = sample_period_sec
 
         # Grab hardware resources
-        self.pin = Pin("LED", Pin.OUT)
+        if not IS_LINUX:
+            self.pin = Pin("LED", Pin.OUT)
         self.temp_sensor = mpy.hal.adapter.temp_sensor.Temp_sensor()
 
     def fetch_target_temp(self):
@@ -51,7 +57,8 @@ class Coldcrash_tracker:
         Toggle the LED and grab and log a sensor sample
         """
         # Toggle LED
-        self.pin.toggle()
+        if not IS_LINUX:
+            self.pin.toggle()
 
         # Read sensor
         self.temp = self.temp_sensor.read()

@@ -1,0 +1,29 @@
+#!/bin/sh
+
+# SPDX-FileCopyrightText: 2022 Zac Moulton
+#
+# SPDX-License-Identifier: MIT
+
+##############################################
+## MAKES SURE YOU DON'T COMMIT YOUR SECRETS ##
+##############################################
+
+if git rev-parse --verify HEAD >/dev/null 2>&1
+then
+	against=HEAD
+else
+	# Initial commit: diff against an empty tree object
+	against=$(git hash-object -t tree /dev/null)
+fi
+
+# Redirect output to stderr.
+exec 1>&2
+
+offenders=$(echo $(git diff --name-only --cached) | grep -w secrets.py)
+if [ ! -z "$offenders" ]
+then
+	cat <<\EOF
+Error: Attempted to commit secrets.py
+EOF
+	exit 1
+fi

@@ -15,7 +15,11 @@ class Ambient_light_sensor:
         Initialize with driver chosen in config.py
         """
         if mpy.hal.config.AMBIENT_LIGHT_SENSOR == 'veml7700':
+            import mpy.hal.driver.veml7700 as veml7700
             self._sensor_driver = veml7700.Ambient_light_sensor_driver()
+        elif mpy.hal.config.AMBIENT_LIGHT_SENSOR == 'mock':
+            import mpy.hal.driver.mock_ambient_light_sensor as mock_ambient_light_sensor
+            self._sensor_driver = mock_ambient_light_sensor.Ambient_light_sensor_driver()
         else:
             raise Exception("No valid ambient light sensor selected")
 
@@ -36,6 +40,3 @@ class Ambient_light_sensor:
             return self._sensor_driver.read_lux()
         else:
             raise NotImplementedError(f"This method must be implemented by driver for {mpy.hal.config.AMBIENT_LIGHT_SENSOR}")
-
-# Import drivers. Must be done after class def so that they can inherit from Ambient_light_sensor.
-import mpy.hal.driver.veml7700 as veml7700
