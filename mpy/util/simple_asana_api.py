@@ -8,8 +8,10 @@ Exposes only the endpoints required for hydra's applications.
 Only supports personal access token authentication, not client authentication.
 """
 
-import urequests as requests
-import json
+try:
+    import urequests as requests
+except:
+    import requests
 
 ENDPOINT_BASE = "https://app.asana.com/api/1.0"
 ENDPOINT_ME = "https://app.asana.com/api/1.0/users/me"

@@ -25,9 +25,12 @@ class Simple_asana_handler:
     TASK_NAME_SANDBOX = 'Hydra sandbox'
     TASK_NAME_JWT_STORE = 'Hydra Gsheets JWT Store'
 
-    def __init__(self):
+    def __init__(self, token=None):
         # Store personal access token
-        self.token = secrets.get_secrets()['asana_personal_access_token']
+        if token:
+            self.token = token
+        else:
+            self.token = secrets.get_secrets()['asana_personal_access_token']
 
         # Fetch and store brewing project GID
         self.brew_project_gid = self.get_personal_project_gid_by_name(self.PROJECT_NAME_BREW)
@@ -101,3 +104,12 @@ class Simple_asana_handler:
         Get the latest JWT
         """
         return api.get_task(task_gid=self.jwt_task_gid, token=self.token)['notes']
+
+    def put_jwt(self, jwt):
+        """
+        Put the given JWT
+        """
+        params = {
+            'notes': jwt
+        }
+        return api.update_task(task_gid=self.jwt_task_gid, token=self.token, params=params)
