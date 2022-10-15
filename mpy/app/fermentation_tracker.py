@@ -13,6 +13,7 @@ import mpy.hal.adapter.temp_sensor
 import mpy.hal.adapter.ambient_light_sensor
 
 import mpy.util.simple_asana_handler
+import mpy.util.simple_google_sheets_handler
 
 IS_LINUX = (sys.platform == 'linux')
 
@@ -48,6 +49,10 @@ class Fermentation_tracker:
         self.temp_sensor = mpy.hal.adapter.temp_sensor.Temp_sensor()
         self.ambient_light_sensor = mpy.hal.adapter.ambient_light_sensor.Ambient_light_sensor()
         self.asana_handler = mpy.util.simple_asana_handler.Simple_asana_handler()
+        self.gsheets_handler = mpy.util.simple_google_sheets_handler.Simple_google_handler()
+
+        # Sensor value logging buffer
+        self.buf = []
 
     def run_blocking(self):
         """
@@ -78,10 +83,13 @@ class Fermentation_tracker:
         self.report_warning()
 
         # Log this sample
-        # TODO log to csv with timestamps
+        self.buf.append([time.time(), self.temp, self.lux])
 
-        # Upload log if upload_period_min has elapsed
-        # TODO upload log
+        # Upload log if our buffer is full enough
+        # TODO Implement logic for making sure we don't run out of space for buffer!
+        if len(self.buf) > 30:
+            self.upload_and_clear_log()
+
 
     def report_warning(self):
         """
@@ -114,3 +122,10 @@ class Fermentation_tracker:
         else:
             # Reset warning state
             self.warning_state_is_active_lux = False
+
+    def upload_and_clear_log(self):
+        """
+        Upload buffer log to gsheets, then clear local buffer
+        """
+        self.gsheets_handler.upload_list(self.buf)
+        self.buf = []

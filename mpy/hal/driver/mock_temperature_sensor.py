@@ -19,5 +19,5 @@ class Temperature_sensor_driver(mpy.hal.adapter.temp_sensor.Temp_sensor):
         """
         Mock temperature value
         """
-        return 10.0 + random.randrange(27)
+        return 10.0 + random.randrange(17)
 
