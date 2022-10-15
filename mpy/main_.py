@@ -9,6 +9,7 @@ import mpy.app.fermentation_tracker as fermentation_tracker
 import mpy.app.coldcrash_tracker as coldcrash_tracker
 
 import mpy.test.asana_tester as asana_tester
+import mpy.test.bluetooth_tester as bluetooth_tester
 import mpy.test.google_sheets_tester as google_sheets_tester
 import mpy.test.sensor_tester as sensor_tester
 
@@ -26,9 +27,10 @@ def main():
 
     # TODO: Read switch or something to decide which app to run.
     # For now hardcode it.
-    app = 'fermentation_tracker'
+    # app = 'fermentation_tracker'
     # app = 'coldcrash_tracker'
     # app = 'asana_tester'
+    app = 'bluetooth_tester'
     # app = 'google_sheets_tester'
     # app = 'sensor_tester'
     if not IS_LINUX:
@@ -48,6 +50,8 @@ def main():
         ct.run_blocking()
     elif app == 'asana_tester':
         at = asana_tester.Asana_tester()
+    elif app == 'bluetooth_tester':
+        at = bluetooth_tester.Bluetooth_tester()
     elif app == 'google_sheets_tester':
         gst = google_sheets_tester.Google_sheets_tester()
     elif app == 'sensor_tester':
