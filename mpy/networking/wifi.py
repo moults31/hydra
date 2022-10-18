@@ -9,37 +9,88 @@ Depends on secrets.py being properly populated
 """
 
 import time
+import ntptime
 import network
+
+from machine import Pin
 
 import mpy.secrets
 
 class Wifi:
     def __init__(self):
         """
-        Connect to wifi. Raise RuntimeError on failure to connect.
+        Establish context for wifi connection
         """
         # Grab ssid and password from user-populated secrets
         self.secrets = mpy.secrets.get_secrets()
         self.ssid = self.secrets['ssid']
         self.password = self.secrets['password']
+        self.wlan = network.WLAN(network.STA_IF)
+        self.UTC_OFFSET = -7 * 60 * 60
+        self.pin = Pin("LED", Pin.OUT)
+        self._connected = False
+
+    def connect_with_retry(self):
+        max_retries = 5
+        retry = 0
+
+        while retry < max_retries:
+            try:
+                self.connect()
+                return
+            except:
+                retry += 1
+                self.disconnect()
+            time.sleep(5)
+        
+        raise RuntimeError("Could not connect_with_retry")
+
+    def connect(self):
+        """
+        Connect to wifi. Raise RuntimeError on failure to connect.
+        """
+        if self._connected:
+            print(f"Already connected to {self.ssid}")
+            return
 
         print(f"Trying to connect to {self.ssid}")
 
-        wlan = network.WLAN(network.STA_IF)
-        wlan.active(True)
-        wlan.connect(self.ssid, self.password)
+        self.wlan.active(True)
+        self.wlan.connect(self.ssid, self.password)
+        time.sleep(5)
 
         # Wait for connect or fail
         max_wait = 10
         while max_wait > 0:
-            if wlan.status() < 0 or wlan.status() >= 3:
+            print('.')
+            if self.wlan.status() < 0 or self.wlan.status() >= 3:
                 break
             max_wait -= 1
+            self.pin.toggle()
             time.sleep(1)
 
         # Handle connection error
-        if wlan.status() != 3:
+        if self.wlan.status() != 3:
             raise RuntimeError('network connection failed')
         else:
             print(f'Connected to {self.ssid}')
-            status = wlan.ifconfig()
+            self._connected = True
+            time.sleep(10)
+            self.ntp_sync()
+
+    def disconnect(self):
+        """
+        Disconnect from wifi
+        """
+        self.wlan.disconnect()
+        self.wlan.active(False)
+        self._connected = False
+
+    def ntp_sync(self):
+        """
+        Sync up to current time in Pacific timezone
+        """
+        ntptime.settime()
+        actual_time = time.localtime(time.time() + self.UTC_OFFSET)
+        print("NTP synced. Actual time:")
+        print(actual_time)

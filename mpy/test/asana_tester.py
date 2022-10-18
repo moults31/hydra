@@ -5,11 +5,23 @@
 """
 Dummy app for running tests against simple_asana.py
 """
+import sys
 
 import mpy.util.simple_asana_handler as simple_asana_handler
+import mpy.networking.wifi as wifi
+
+IS_LINUX = (sys.platform == 'linux')
 
 class Asana_tester:
     def __init__(self):
+        # Connect to wifi
+        if not IS_LINUX:
+            self.pin = Pin("LED", Pin.OUT)
+            self.pin.toggle()
+            self.wifi_cnxn = wifi.Wifi()
+            self.wifi_cnxn.connect()
+            self.pin.toggle()
+
         asana = simple_asana_handler.Simple_asana_handler()
 
         # Arbitrary task description for testing

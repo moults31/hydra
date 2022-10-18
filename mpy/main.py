@@ -12,8 +12,6 @@ import mpy.test.asana_tester as asana_tester
 import mpy.test.google_sheets_tester as google_sheets_tester
 import mpy.test.sensor_tester as sensor_tester
 
-import mpy.networking.wifi as wifi
-
 IS_LINUX = (sys.platform == 'linux')
 
 if not IS_LINUX:
@@ -31,16 +29,15 @@ def main():
     # app = 'asana_tester'
     # app = 'google_sheets_tester'
     # app = 'sensor_tester'
-    if not IS_LINUX:
-        pin.toggle()
-        wifi_connection = wifi.Wifi()
-        pin.toggle()
+
+    print("Starting ", app)
 
     if app == 'fermentation_tracker':
         ft = fermentation_tracker.Fermentation_tracker(
             warning_thresh_lux=50.0,
             warning_thresh_temp=26.0,
-            sample_period_sec=1
+            sample_period_sec=180,
+            upload_buf_quota=2
         )
         ft.run_blocking()
     elif app == 'coldcrash_tracker':

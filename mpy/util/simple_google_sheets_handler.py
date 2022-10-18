@@ -19,13 +19,15 @@ class Simple_google_handler:
     """
 
     HEADER = ['POSIX Time', 'Temp (C)', 'Light (Lux)']
-    row_idx = 1
 
-    def __init__(self):
+    def __init__(self, row_idx=1):
+        self.row_idx = row_idx
         self.sheet_id = secrets.get_secrets()['gsheet_id']
         self.asana = asana.Simple_asana_handler()
         self.jwt = self.asana.get_jwt()
-        self.upload_header()
+
+        if self.row_idx == 1:
+            self.upload_header()
 
     def _rowcol_to_a1(self, row, col):
         """
