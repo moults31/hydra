@@ -16,6 +16,20 @@ except:
 ENDPOINT_BASE = "https://app.asana.com/api/1.0"
 ENDPOINT_ME = "https://app.asana.com/api/1.0/users/me"
 
+def exception_wrapper(func):
+    """
+    Decorator to prevent us from hanging when an exception is raised by urequests
+    """
+    def wrapper(*args, **kwargs):
+        try:
+            rv = func(*args, **kwargs)
+            return rv
+        except BaseException as e:
+            print(f"WARNING: Ignoring exception thrown by {func.__name__}. Details:")
+            print(e)
+            return False
+    return wrapper
+
 def _build_header(token, content_type=None, accept=None):
     headers = {}
 
@@ -29,6 +43,7 @@ def _build_header(token, content_type=None, accept=None):
 
     return headers
 
+@exception_wrapper
 def get_me(token):
     """
     Makes a get request for the personal access token owner's user info and prints the response
@@ -38,6 +53,7 @@ def get_me(token):
 
     return requests.get(ENDPOINT_ME, data=data, headers=headers).json()['data']
 
+@exception_wrapper
 def get_projects_for_workspace(workspace_gid, token):
     """
     Makes a get request for the list of projects in the specified workspace
@@ -48,6 +64,7 @@ def get_projects_for_workspace(workspace_gid, token):
 
     return requests.get(endpoint, data=data, headers=headers).json()['data']
 
+@exception_wrapper
 def get_tasks_for_project(project_gid, token):
     """
     Makes a get request for the list of tasks in the specified project

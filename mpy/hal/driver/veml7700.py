@@ -114,7 +114,6 @@ class Ambient_light_sensor_driver(mpy.hal.adapter.ambient_light_sensor.Ambient_l
 
         print("Trying to write cfg to veml7700")
 
-        time.sleep(10)
         # Write it.
         self._i2c.writeto_mem(self.DEV_ADDR, self.REG_ADDR_CONF_0, config_cmd_val.to_bytes(2, 'big'))
         print("Write success")

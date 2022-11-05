@@ -9,7 +9,11 @@ Dummy app for running tests against simple_google_sheets_handler
 import sys
 
 import mpy.util.simple_google_sheets_handler as simple_google_sheets_handler
-import mpy.networking.wifi as wifi
+
+IS_LINUX = (sys.platform == 'linux')
+
+if not IS_LINUX:
+    import mpy.networking.wifi as wifi
 
 class Google_sheets_tester:
     def __init__(self):

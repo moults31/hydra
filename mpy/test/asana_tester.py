@@ -8,9 +8,11 @@ Dummy app for running tests against simple_asana.py
 import sys
 
 import mpy.util.simple_asana_handler as simple_asana_handler
-import mpy.networking.wifi as wifi
 
 IS_LINUX = (sys.platform == 'linux')
+
+if not IS_LINUX:
+    import mpy.networking.wifi as wifi
 
 class Asana_tester:
     def __init__(self):

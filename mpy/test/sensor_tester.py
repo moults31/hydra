@@ -6,12 +6,16 @@
 Dummy app for running tests against sensors
 """
 
+import sys
 import time
 
 import mpy.hal.adapter.temp_sensor
 import mpy.hal.adapter.ambient_light_sensor
 
-from machine import Pin
+IS_LINUX = (sys.platform == 'linux')
+
+if not IS_LINUX:
+    from machine import Pin
 
 class Sensor_tester:
     def __init__(self, period_sec=1):

@@ -20,6 +20,8 @@ class Simple_google_handler:
 
     HEADER = ['POSIX Time', 'Temp (C)', 'Light (Lux)']
 
+    header_uploaded = False
+
     def __init__(self, row_idx=1):
         self.row_idx = row_idx
         self.sheet_id = secrets.get_secrets()['gsheet_id']
@@ -27,7 +29,7 @@ class Simple_google_handler:
         self.jwt = self.asana.get_jwt()
 
         if self.row_idx == 1:
-            self.upload_header()
+            header_uploaded = self.upload_header()
 
     def _rowcol_to_a1(self, row, col):
         """
@@ -77,16 +79,26 @@ class Simple_google_handler:
         start = self._rowcol_to_a1(1,1)
         end = self._rowcol_to_a1(1,len(self.HEADER))
         range = f'{start}:{end}'
-        sheet_name = 'Sheet1'
+        sheet_name = 'Sheet3'
         r = api.update_range(self.jwt, self.sheet_id, sheet_name, cell_range=range, values=[self.HEADER])
 
-        # Start from row 2 now since header occupies row 1
-        self.row_idx = 2
+        update_succeeded = False
+        if r != False:
+            if not 'error' in r.keys():
+                update_succeeded = True
+
+        if update_succeeded:
+            # Start from row 2 now since header occupies row 1
+            self.row_idx = 2
+
+        return update_succeeded
 
     def upload_list(self, values):
         """
         Upload a 2D list of values to the sheet
         """
+        # api.query_big()
+        print("Trying upload_list")
         shape = len(values), len(values[0])
 
         # Start at [next row index, first index]
@@ -95,23 +107,39 @@ class Simple_google_handler:
         end = self._rowcol_to_a1(self.row_idx + shape[0], shape[1])
 
         cell_range = f'{start}:{end}'
-        sheet_name = 'Sheet1'
+        sheet_name = 'Sheet3'
 
+        self.get_jwt()
+
+        print("upload_list: about to update_range")
         r = api.update_range(self.jwt, self.sheet_id, sheet_name, cell_range=cell_range, values=values)
+        print("upload_list: done update_range")
 
-        self.row_idx += shape[0]
+        update_succeeded = False
+        if r != False:
+            if not 'error' in r.keys():
+                update_succeeded = True
 
-        # TODO: Make decorator for all calls to the API to ask for a new JWT if expired
         # TODO: We shouldn't block sensor samples on these retries
-        if 'error' in r.keys():
-            print(r['error'])
-            for i in range(10):
-                print(f'Retry #{i+1}...')
-                self.get_jwt()
-                r = api.update_range(self.jwt, self.sheet_id, sheet_name, cell_range=cell_range, values=values)
-                if not 'error' in r.keys():
-                    print('Success!')
-                    return r
-                time.sleep(30)
-            raise Exception('Failed to authenticate gsheets after 10 retries')
-        return r
+        if update_succeeded != False:
+            self.row_idx += shape[0]
+            print('upload_list: Success!')
+            return True
+        # else:
+        #     for i in range(10):
+        #         print(f'Retry #{i+1}...')
+        #         self.get_jwt()
+        #         r = api.update_range(self.jwt, self.sheet_id, sheet_name, cell_range=cell_range, values=values)
+                
+        #         update_succeeded = False
+        #         if r != False:
+        #             if not 'error' in r.keys():
+        #                 update_succeeded = True
+                
+        #         if update_succeeded != False:
+        #             self.row_idx += shape[0]
+        #             print('upload_list: Success!')
+        #             return True
+        #         time.sleep(5)
+
+        return False

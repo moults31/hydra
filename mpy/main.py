@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: MIT
 
 import sys
+import os
 import micropython
 
 import mpy.app.fermentation_tracker as fermentation_tracker
@@ -11,6 +12,7 @@ import mpy.app.coldcrash_tracker as coldcrash_tracker
 import mpy.test.asana_tester as asana_tester
 import mpy.test.google_sheets_tester as google_sheets_tester
 import mpy.test.sensor_tester as sensor_tester
+# import mpy.test.wdt_tester as wdt_tester
 
 IS_LINUX = (sys.platform == 'linux')
 
@@ -20,6 +22,8 @@ if not IS_LINUX:
 
 
 def main():
+    if not IS_LINUX:
+        os.remove('boot.py')
     print(micropython.mem_info())
 
     # TODO: Read switch or something to decide which app to run.
@@ -29,15 +33,16 @@ def main():
     # app = 'asana_tester'
     # app = 'google_sheets_tester'
     # app = 'sensor_tester'
+    # app = 'wdt_tester'
 
     print("Starting ", app)
 
     if app == 'fermentation_tracker':
         ft = fermentation_tracker.Fermentation_tracker(
-            warning_thresh_lux=50.0,
+            warning_thresh_lux=15.0,
             warning_thresh_temp=26.0,
-            sample_period_sec=180,
-            upload_buf_quota=2
+            sample_period_sec=15,
+            upload_buf_quota=1
         )
         ft.run_blocking()
     elif app == 'coldcrash_tracker':
@@ -49,6 +54,8 @@ def main():
         gst = google_sheets_tester.Google_sheets_tester()
     elif app == 'sensor_tester':
         at = sensor_tester.Sensor_tester()
+    # elif app == 'wdt_tester':
+    #     wt = wdt_tester.WDT_tester()
     else:
         raise Exception("No app selected!")
 

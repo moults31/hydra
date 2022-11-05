@@ -12,6 +12,20 @@ import urequests as requests
 
 ENDPOINT_BASE = "https://sheets.googleapis.com/v4/spreadsheets"
 
+def exception_wrapper(func):
+    """
+    Decorator to prevent us from hanging when an exception is raised by urequests
+    """
+    def wrapper(*args, **kwargs):
+        try:
+            rv = func(*args, **kwargs)
+            return rv
+        except BaseException as e:
+            print(f"WARNING: Ignoring exception thrown by {func.__name__}. Details:")
+            print(e)
+            return False
+    return wrapper
+
 def _build_header(token, content_type=None, accept=None):
     headers = {}
 
@@ -25,6 +39,7 @@ def _build_header(token, content_type=None, accept=None):
 
     return headers
 
+@exception_wrapper
 def get_range(token, sheet_id, sheet_name, cell_range):
     """
     Returns content from the specified cell_range of the specified sheet
@@ -45,3 +60,12 @@ def update_range(token, sheet_id, sheet_name, cell_range, values):
     }
     r = requests.put(endpoint, headers=headers, json=body)
     return r.json()
+
+@exception_wrapper
+def query_big():
+    """
+    Updates the specified cell_range of the specified sheet
+    """
+    r = requests.get("http://www.google.com")
+    print(r.content)
+    return r.content

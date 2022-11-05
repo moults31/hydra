@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/home/galileo/uiuc/cs437/final/hydra/mpy/app/fermentation_tracker.py", line 157, in run_blocking
+  File "/home/galileo/uiuc/cs437/final/hydra/mpy/app/fermentation_tracker.py", line 253, in step
+  File "/home/galileo/uiuc/cs437/final/hydra/mpy/app/fermentation_tracker.py", line 111, in blink
+AttributeError: 'Fermentation_tracker' object has no attribute 'pin'
