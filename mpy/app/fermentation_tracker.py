@@ -50,11 +50,6 @@ class Fermentation_tracker:
     # Error log file name
     ERROR_LOG_FILE_NAME = 'ferm_track_error_log.txt'
 
-    # Memory tracking
-    mem_tracker = []
-    mem_free_after_gc_prev = 0
-
-
     def __init__(self, 
         sample_period_sec=10,
         upload_buf_quota=10,
@@ -203,29 +198,12 @@ class Fermentation_tracker:
         with open('mem_info_before_gc.txt', 'w') as f:
             f.write(mem_info)
 
-        mem_tracker = []
         gc.collect()
         mem_free_after_gc = gc.mem_free()
-        mem_tracker.append(mem_free_after_gc)
         mem_info = f'free: {mem_free_after_gc}\nused: {gc.mem_alloc()}'
         print(mem_info)
         with open('mem_info_after_gc.txt', 'w') as f:
             f.write(mem_info)
-
-        # If mem_free dropped by a lot, log the mem_tracker from the previous iter
-        if self.mem_free_after_gc_prev - mem_free_after_gc > 5000:
-            print(f"Memory dropped from {self.mem_free_after_gc_prev} to {mem_free_after_gc}. Reporting to file.")
-            with open(f'mem_free_{self.mem_free_after_gc_prev}_to_{mem_free_after_gc}.txt', 'w') as f:
-                f.write(str(self.mem_tracker))
-
-        # Remember mem_free_after_gc for next iteration
-        self.mem_free_after_gc_prev = mem_free_after_gc
-
-        # self.mem_free_before_gc = gc.mem_free()
-        # # print(f'free: {self.mem_free_before_gc}\nused: {gc.mem_alloc()}')
-        # gc.collect()
-        # self.mem_free_after_gc = gc.mem_free()
-        # # print(f'free: {self.mem_free_after_gc}\nused: {gc.mem_alloc()}')
 
         # self.wdt.feed()
         if not IS_LINUX:
@@ -254,9 +232,6 @@ class Fermentation_tracker:
 
             print(self.wifi_cnxn.wlan.ifconfig()[0])
 
-        gc.collect()
-        mem_tracker.append(gc.mem_free())
-
         # Report previous exception if applicable, and clear if reporting was successful
         # if self.step_exception_msg != None:
         #     print("Reporting previous exception in asana")
@@ -270,15 +245,9 @@ class Fermentation_tracker:
         self.temp = self.temp_sensor.read()
         self.lux = self.ambient_light_sensor.read_lux()
 
-        gc.collect()
-        mem_tracker.append(gc.mem_free())
-
         # Log this sample
         timestamp = time.time() + self.UTC_OFFSET
         self.buf.append([timestamp, self.temp, self.lux, mem_free_before_gc, mem_free_after_gc])
-
-        gc.collect()
-        mem_tracker.append(gc.mem_free())
 
         # Warn if necessary
         isconnected = True
@@ -293,11 +262,6 @@ class Fermentation_tracker:
         self.n += 1
         print(f'Done {self.n} samples')
 
-        gc.collect()
-        mem_tracker.append(gc.mem_free())
-
-        micropython.heap_lock()
-
         # Upload log if our buffer is full enough
         # TODO Implement logic for making sure we don't run out of space for buffer!
         if len(self.buf) >= self.upload_buf_quota:
@@ -308,18 +272,6 @@ class Fermentation_tracker:
                 self.upload_and_clear_log()
             else:
                 self.blink(n_periods=5, n_blinks_per_period=5, period=0.5, blink_interval=0.2)
-        
-        micropython.heap_unlock()
-
-        gc.collect()
-        mem_tracker.append(gc.mem_free())
-
-        self.mem_tracker = mem_tracker
-        print(mem_tracker)
-        # print(locals())
-        # print(globals())
-        # l = locals()
-        # print(dir(l['mpy'].app.fermentation_tracker))
 
 
     def report_warning(self):

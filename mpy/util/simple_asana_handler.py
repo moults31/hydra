@@ -10,6 +10,8 @@ and sending them to the simple API
 import mpy.secrets as secrets
 import mpy.util.simple_asana_api as api
 
+import gc
+
 class Simple_asana_handler:
     """
     Simple wrapper for sending HTTP requests to Asana API
@@ -123,7 +125,10 @@ class Simple_asana_handler:
         if not self.jwt_task_gid:
             self.jwt_task_gid = self.get_task_gid_by_name(self.TASK_NAME_JWT_STORE)
 
-        return api.get_task(task_gid=self.jwt_task_gid, token=self.token)['notes']
+        gc.collect()
+        r = api.get_task(task_gid=self.jwt_task_gid, token=self.token)
+
+        return r['notes']
 
     def put_jwt(self, jwt):
         """

@@ -8,6 +8,7 @@ and sending them to the simple API
 """
 
 import time
+import gc
 
 import mpy.secrets as secrets
 import mpy.util.simple_google_sheets_api as api
@@ -22,6 +23,10 @@ class Simple_google_handler:
 
     header_uploaded = False
 
+    # Memory tracking
+    mem_tracker = []
+    mem_free_after_gc_prev = 0
+
     def __init__(self, row_idx=1):
         self.row_idx = row_idx
         self.sheet_id = secrets.get_secrets()['gsheet_id']
@@ -30,6 +35,10 @@ class Simple_google_handler:
 
         if self.row_idx == 1:
             header_uploaded = self.upload_header()
+
+        # Init mem tracking
+        gc.collect()
+        self.mem_free_after_gc_prev = gc.mem_free()
 
     def _rowcol_to_a1(self, row, col):
         """
@@ -79,7 +88,7 @@ class Simple_google_handler:
         start = self._rowcol_to_a1(1,1)
         end = self._rowcol_to_a1(1,len(self.HEADER))
         range = f'{start}:{end}'
-        sheet_name = 'Sheet3'
+        sheet_name = 'Sheet1'
         r = api.update_range(self.jwt, self.sheet_id, sheet_name, cell_range=range, values=[self.HEADER])
 
         update_succeeded = False
@@ -101,30 +110,54 @@ class Simple_google_handler:
         print("Trying upload_list")
         shape = len(values), len(values[0])
 
+
+        # If mem_free dropped by a lot, log the mem_tracker from the previous iter
+        mem_tracker = []
+        gc.collect()
+        mem_free_after_gc = gc.mem_free()
+        if self.mem_free_after_gc_prev - mem_free_after_gc > 5000:
+            print(f"Memory dropped from {self.mem_free_after_gc_prev} to {mem_free_after_gc}. Reporting to file.")
+            with open(f'mem_free_{self.mem_free_after_gc_prev}_to_{mem_free_after_gc}.txt', 'w') as f:
+                f.write(str(self.mem_tracker))
+
+        # Remember mem_free_after_gc for next iteration
+        self.mem_free_after_gc_prev = mem_free_after_gc
+
         # Start at [next row index, first index]
         # End at [height of a sample + next row index, width of a sample]
         start = self._rowcol_to_a1(self.row_idx, 1)
         end = self._rowcol_to_a1(self.row_idx + shape[0], shape[1])
 
         cell_range = f'{start}:{end}'
-        sheet_name = 'Sheet3'
+        sheet_name = 'Sheet1'
+
+        gc.collect()
+        mem_tracker.append(gc.mem_free())
 
         self.get_jwt()
+
+        gc.collect()
+        mem_tracker.append(gc.mem_free())
 
         print("upload_list: about to update_range")
         r = api.update_range(self.jwt, self.sheet_id, sheet_name, cell_range=cell_range, values=values)
         print("upload_list: done update_range")
+
+        gc.collect()
+        mem_tracker.append(gc.mem_free())
 
         update_succeeded = False
         if r != False:
             if not 'error' in r.keys():
                 update_succeeded = True
 
+        rv = False
+
         # TODO: We shouldn't block sensor samples on these retries
         if update_succeeded != False:
             self.row_idx += shape[0]
             print('upload_list: Success!')
-            return True
+            rv = True
         # else:
         #     for i in range(10):
         #         print(f'Retry #{i+1}...')
@@ -142,4 +175,7 @@ class Simple_google_handler:
         #             return True
         #         time.sleep(5)
 
-        return False
+        self.mem_tracker = mem_tracker
+        print(mem_tracker)
+
+        return rv
