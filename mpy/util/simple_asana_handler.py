@@ -7,10 +7,16 @@ Simple handler for building application-specific Asana requests
 and sending them to the simple API
 """
 
+import gc
+import sys
+
 import mpy.secrets as secrets
 import mpy.util.simple_asana_api as api
 
-import gc
+IS_LINUX = (sys.platform == 'linux')
+
+if not IS_LINUX:
+    import mpy.networking.wifi as wifi
 
 class Simple_asana_handler:
     """
@@ -29,18 +35,44 @@ class Simple_asana_handler:
     TASK_NAME_JWT_STORE = 'Hydra Gsheets JWT Store'
     TASK_NAME_EXCEPTION_LOG = 'Hydra exception log'
 
-    def __init__(self, token=None):
+    # Mapping for unique hydras to identify themeselves
+    hydra_instance_map = {
+        '28:cd:c1:05:07:c3': 'Hydra-1',
+        'unix': 'Hydra-unix',
+    }
+
+    # Mapping between Asana section names and app that should handle them
+    app_map = {
+        'Planned': 'coldcrash_tracker',
+        'In Primary': 'fermentation_tracker',
+        'In Secondary': 'fermentation_tracker'
+    }
+
+    def __init__(self, token=None, active_task=None):
+        # Figure out which machine we are running on
+        if IS_LINUX:
+            self.name = self.hydra_instance_map['unix']
+        else:
+            wifi_cnxn = wifi.Wifi()
+            self.name = self.hydra_instance_map[wifi_cnxn.mac]
+
+            # Make sure we're connected
+            wifi_cnxn.connect_with_retry()
+
         # Store personal access token
         if token:
             self.token = token
         else:
-            self.token = secrets.get_secrets()['asana_personal_access_token']
+            self.token = secrets.get_secrets()[f'asana_personal_access_token_{self.name}']
 
         # Fetch and store brewing project GID
         self.brew_project_gid = self.get_personal_project_gid_by_name(self.PROJECT_NAME_BREW)
 
         # Fetch and store relevant task GIDs
-        self.active_task_gid = self.get_active_task_gid()
+        if active_task:
+            self.active_task_gid = active_task
+        else:
+            self.active_task_gid = self.get_sandbox_task_gid()
         self.jwt_task_gid = self.get_task_gid_by_name(self.TASK_NAME_JWT_STORE)
         self.exception_log_task_gid = self.get_task_gid_by_name(self.TASK_NAME_EXCEPTION_LOG)
 
@@ -84,7 +116,7 @@ class Simple_asana_handler:
         active_task = next(task for task in tasks if task['name'] == name)
         return active_task['gid']
 
-    def get_active_task_gid(self):
+    def get_sandbox_task_gid(self):
         """
         Returns the gid for the active task
         Returns False if failed to fetch it
@@ -101,7 +133,7 @@ class Simple_asana_handler:
             'notes': desc
         }
         if not self.active_task_gid:
-            self.active_task_gid = self.get_active_task_gid()
+            self.active_task_gid = self.get_sandbox_task_gid()
 
         return api.update_task(task_gid=self.active_task_gid, token=self.token, params=params)
 
@@ -115,7 +147,7 @@ class Simple_asana_handler:
             "text": text
         }
         if not self.active_task_gid:
-            self.active_task_gid = self.get_active_task_gid()
+            self.active_task_gid = self.get_sandbox_task_gid()
         return api.add_comment_on_task(task_gid=self.active_task_gid, token=self.token, params=params)
 
     def get_jwt(self):
@@ -149,5 +181,67 @@ class Simple_asana_handler:
             "text": msg
         }
         if not self.exception_log_task_gid:
-            self.exception_log_task_gid = self.get_active_task_gid()
+            self.exception_log_task_gid = self.get_sandbox_task_gid()
         return api.add_comment_on_task(task_gid=self.exception_log_task_gid, token=self.token, params=params)
+
+    def get_section_gid_by_name(self, name):
+        """
+        Returns the gid for the named task
+        Returns False if failed to fetch it
+        """
+        tasks = api.get_sections_for_project(project_gid=self.brew_project_gid, token=self.token)
+
+        if not tasks:
+            return False
+
+        # Get and return specified task
+        active_task = next(task for task in tasks if task['name'] == name)
+        return active_task['gid']
+
+    def get_tasks_for_section(self, section_gid):
+        """
+        Returns a list of tasks in the specified section
+        """
+        return api.get_tasks_for_section(section_gid, self.token)
+
+    def get_subtasks_for_task(self, task_gid):
+        """
+        Returns a list of subtasks in the specified task
+        """
+        return api.get_subtasks_for_task(task_gid, self.token)
+
+    def find_assigned_subtask_in_section(self, section_name):
+        """
+        Finds a subtask assigned to authenticated user in the named section.
+        Returns the first match, or None if no matches
+        """
+        section_gid = self.get_section_gid_by_name(section_name)
+        tasks = self.get_tasks_for_section(section_gid)
+
+        for task in tasks:
+            subtasks = self.get_subtasks_for_task(task['gid'])
+
+            for subtask in subtasks:
+                subtask_info = api.get_task(subtask['gid'], self.token, fields=['assignee'])
+                assignee = subtask_info['assignee']['name']
+                if assignee == self.name:
+                    return (subtask['gid'], task['name'])
+
+        return None
+
+    def decide_on_app(self):
+        """
+        Decides on which app should be run.
+        Does this by checking for any subtasks in the specified
+        section that are assigned to the authenticated user.
+        If found:
+            Returns tuple of app, subtask_gid, task_name
+        If none found, returns None.
+        """
+        for section, app in self.app_map.items():
+            r = self.find_assigned_subtask_in_section(section)
+            if r:
+                subtask_gid, task_name = r
+                return (app, section.split('In ')[1], subtask_gid, task_name)
+
+        return None

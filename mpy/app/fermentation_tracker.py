@@ -50,7 +50,10 @@ class Fermentation_tracker:
     # Error log file name
     ERROR_LOG_FILE_NAME = 'ferm_track_error_log.txt'
 
-    def __init__(self, 
+    def __init__(self,
+        mode='Primary',
+        active_task_gid=None,
+        active_parent_task_name=None,
         sample_period_sec=10,
         upload_buf_quota=10,
         warning_thresh_temp=25.0,
@@ -90,8 +93,13 @@ class Fermentation_tracker:
                 # Grab resources
                 self.temp_sensor = mpy.hal.adapter.temp_sensor.Temp_sensor()
                 self.ambient_light_sensor = mpy.hal.adapter.ambient_light_sensor.Ambient_light_sensor()
-                self.asana_handler = mpy.util.simple_asana_handler.Simple_asana_handler()
-                self.gsheets_handler = mpy.util.simple_google_sheets_handler.Simple_google_handler()
+                self.asana_handler = mpy.util.simple_asana_handler.Simple_asana_handler(active_task=active_task_gid)
+                self.gsheets_handler = mpy.util.simple_google_sheets_handler.Simple_google_handler(new_sheet_name=active_parent_task_name, subsheet=mode)
+
+                # Update the active Asana task with the new Google Sheet URL
+                self.asana_handler.update_active_task_description(
+                    self.gsheets_handler.get_active_sheet_url()
+                )
 
                 # Turn off LED to indicate connection and init success
                 if not IS_LINUX:

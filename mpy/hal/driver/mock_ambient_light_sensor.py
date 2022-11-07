@@ -26,4 +26,4 @@ class Ambient_light_sensor_driver(mpy.hal.adapter.ambient_light_sensor.Ambient_l
         """
         Mock converted lux value
         """
-        return 0.0 + random.randrange(16)
+        return 1.0 + random.randrange(16)

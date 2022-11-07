@@ -12,6 +12,7 @@ Depends on secrets.py being properly populated
 import time
 import ntptime
 import network
+import ubinascii
 
 from machine import Pin
 
@@ -29,6 +30,7 @@ class Wifi:
         self.wlan = network.WLAN(network.STA_IF)
         self.UTC_OFFSET = -7 * 60 * 60
         self.pin = Pin("LED", Pin.OUT)
+        self.mac = ubinascii.hexlify(self.wlan.config('mac'),':').decode()
         # self.connected = False
 
     def connect_with_retry(self):

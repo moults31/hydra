@@ -12,6 +12,7 @@ import mpy.util.simple_asana_handler as simple_asana_handler
 IS_LINUX = (sys.platform == 'linux')
 
 if not IS_LINUX:
+    from machine import Pin
     import mpy.networking.wifi as wifi
 
 class Asana_tester:
@@ -35,3 +36,6 @@ class Asana_tester:
         comment_text = "I DRAW"
         r = asana.add_comment_on_active_task(text=comment_text, is_pinned=True)
         print(r)
+
+        assigned_task = asana.find_assigned_subtask_in_section('In Primary')
+        print(assigned_task)

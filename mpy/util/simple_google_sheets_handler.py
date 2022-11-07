@@ -21,17 +21,27 @@ class Simple_google_handler:
 
     HEADER = ['POSIX Time', 'Temp (C)', 'Light (Lux)']
 
+    SHEET_URI = 'https://docs.google.com/spreadsheets/d'
+
     header_uploaded = False
 
     # Memory tracking
     mem_tracker = []
     mem_free_after_gc_prev = 0
 
-    def __init__(self, row_idx=1):
+    def __init__(self, row_idx=1, new_sheet_name=None, subsheet='Primary'):
         self.row_idx = row_idx
-        self.sheet_id = secrets.get_secrets()['gsheet_id']
+        self.sheet_name = subsheet
         self.asana = asana.Simple_asana_handler()
         self.jwt = self.asana.get_jwt()
+
+        _secrets = secrets.get_secrets()
+
+        if new_sheet_name:
+            new_sheet_name_sanitized = new_sheet_name.replace(' ', '_')
+            self.sheet_id = self.duplicate_spreadsheet(_secrets['gsheet_id_hydra_template'], new_sheet_name_sanitized)
+        else:
+            self.sheet_id = _secrets['gsheet_id_default']
 
         if self.row_idx == 1:
             header_uploaded = self.upload_header()
@@ -88,8 +98,7 @@ class Simple_google_handler:
         start = self._rowcol_to_a1(1,1)
         end = self._rowcol_to_a1(1,len(self.HEADER))
         range = f'{start}:{end}'
-        sheet_name = 'Sheet1'
-        r = api.update_range(self.jwt, self.sheet_id, sheet_name, cell_range=range, values=[self.HEADER])
+        r = api.update_range(self.jwt, self.sheet_id, self.sheet_name, cell_range=range, values=[self.HEADER])
 
         update_succeeded = False
         if r != False:
@@ -129,7 +138,6 @@ class Simple_google_handler:
         end = self._rowcol_to_a1(self.row_idx + shape[0], shape[1])
 
         cell_range = f'{start}:{end}'
-        sheet_name = 'Sheet1'
 
         gc.collect()
         mem_tracker.append(gc.mem_free())
@@ -140,7 +148,7 @@ class Simple_google_handler:
         mem_tracker.append(gc.mem_free())
 
         print("upload_list: about to update_range")
-        r = api.update_range(self.jwt, self.sheet_id, sheet_name, cell_range=cell_range, values=values)
+        r = api.update_range(self.jwt, self.sheet_id, self.sheet_name, cell_range=cell_range, values=values)
         print("upload_list: done update_range")
 
         gc.collect()
@@ -205,7 +213,7 @@ class Simple_google_handler:
         """
         Returns a list of sheet gids in the given spreadsheet
         """
-        r = api.get_spreadsheet(self.jwt, sheet_id)
+        r = api.get_spreadsheet(self.jwt, sheet_id, fields='sheets.properties.sheetId')
         sheets = r['sheets']
 
         sheet_gids = []
@@ -220,11 +228,12 @@ class Simple_google_handler:
         Removes the default Sheet1.
         Strips "Copy of" from the names of any sheets that have that.
         """
-        r = api.get_spreadsheet(self.jwt, sheet_id)
+        r = api.get_spreadsheet(self.jwt, sheet_id, fields='sheets.properties(sheetId,title)')
+        sheets = r['sheets']
 
         # Build up list of batchUpdate requests
         requests_arr = []
-        for sheet in r['sheets']:
+        for sheet in sheets:
             title = sheet['properties']['title']
             id = sheet['properties']['sheetId']
 
@@ -266,3 +275,9 @@ class Simple_google_handler:
             api.batch_update(self.jwt, sheet_id, batch_update_body)
 
         return
+
+    def get_active_sheet_url(self):
+        """
+        Returns a URL that a user could use to access the active sheet 
+        """
+        return f'{self.SHEET_URI}/{self.sheet_id}'

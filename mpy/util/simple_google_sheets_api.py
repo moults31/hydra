@@ -99,12 +99,14 @@ def copy_sheet(token, from_id, to_id, gid):
     return r.json()
 
 @exception_wrapper
-def get_spreadsheet(token, id):
+def get_spreadsheet(token, id, fields=None):
     """
     Returns a spreadsheet object for the spreadsheet with the specified id
     """
     headers = _build_header(token, content_type='application/json')
     endpoint = f"{ENDPOINT_BASE}/{id}"
+    if fields:
+        endpoint = endpoint + f'?fields={fields}'
     r = requests.get(endpoint, headers=headers)
     return r.json()
 
