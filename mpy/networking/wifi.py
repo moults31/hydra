@@ -61,6 +61,9 @@ class Wifi:
 
         print(f"Trying to connect to {self.ssid}")
 
+        if self.wlan.isconnected():
+            return
+
         self.wlan.active(True)
         self.wlan.connect(self.ssid, self.password)
         time.sleep(5)

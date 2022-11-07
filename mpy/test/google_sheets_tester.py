@@ -30,7 +30,7 @@ class Google_sheets_tester:
         self.google_sheets = simple_google_sheets_handler.Simple_google_handler()
         self.google_sheets.get_jwt()
 
-        self.test_duplicate_spreadsheet()
+        self.test_request_permissions_update()
 
     def test_upload_list(self):
         # Arbitrary list of values
@@ -51,3 +51,6 @@ class Google_sheets_tester:
         new_title = 'Tug_tester'
         sheetid = self.google_sheets.duplicate_spreadsheet(old_id, new_title)
         return
+
+    def test_request_permissions_update(self):
+        self.google_sheets.request_permissions_update()

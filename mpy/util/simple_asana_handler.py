@@ -242,6 +242,7 @@ class Simple_asana_handler:
             r = self.find_assigned_subtask_in_section(section)
             if r:
                 subtask_gid, task_name = r
+                api.add_comment_on_task(task_gid=subtask_gid, token=self.token, params={'text': 'On it!'})
                 return (app, section.split('In ')[1], subtask_gid, task_name)
 
         return None

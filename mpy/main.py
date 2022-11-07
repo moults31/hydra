@@ -51,7 +51,7 @@ def main():
             active_parent_task_name=task_name,
             warning_thresh_lux=15.0,
             warning_thresh_temp=26.0,
-            sample_period_sec=15,
+            sample_period_sec=60,
             upload_buf_quota=1
         )
         ft.run_blocking()

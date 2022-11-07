@@ -82,6 +82,7 @@ def create_spreadsheet(token, title):
         ],
     }
     r = requests.post(endpoint, headers=headers, json=body)
+
     return r.json()['spreadsheetId']
 
 @exception_wrapper

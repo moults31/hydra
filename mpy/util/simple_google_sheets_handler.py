@@ -10,9 +10,16 @@ and sending them to the simple API
 import time
 import gc
 
+import urequests as requests
+
 import mpy.secrets as secrets
 import mpy.util.simple_google_sheets_api as api
 import mpy.util.simple_asana_handler as asana
+
+import sys
+IS_LINUX = (sys.platform == 'linux')
+if not IS_LINUX:
+    from machine import Pin
 
 class Simple_google_handler:
     """
@@ -37,11 +44,16 @@ class Simple_google_handler:
 
         _secrets = secrets.get_secrets()
 
+        self.permission_updater_url = _secrets['hydra_permission_updater_url']
+
         if new_sheet_name:
             new_sheet_name_sanitized = new_sheet_name.replace(' ', '_')
+            print(f'Creating new sheet with name {new_sheet_name_sanitized} ...')
             self.sheet_id = self.duplicate_spreadsheet(_secrets['gsheet_id_hydra_template'], new_sheet_name_sanitized)
+            print(f'Done, new id {self.sheet_id}')
         else:
             self.sheet_id = _secrets['gsheet_id_default']
+            print(f'Using default sheet {self.sheet_id}')
 
         if self.row_idx == 1:
             header_uploaded = self.upload_header()
@@ -49,6 +61,10 @@ class Simple_google_handler:
         # Init mem tracking
         gc.collect()
         self.mem_free_after_gc_prev = gc.mem_free()
+
+        # Get LED pin if running on mpy hardware
+        if not IS_LINUX:
+            self.pin = Pin("LED", Pin.OUT)
 
     def _rowcol_to_a1(self, row, col):
         """
@@ -111,6 +127,19 @@ class Simple_google_handler:
 
         return update_succeeded
 
+    def blink(self, n_periods, n_blinks_per_period, period, blink_interval):
+        if not IS_LINUX:
+            og = self.pin.value()
+            for _ in range(n_periods):
+                self.pin.off()
+                time.sleep(period)
+                for _ in range(n_blinks_per_period):
+                    self.pin.on()
+                    time.sleep(blink_interval)
+                    self.pin.off()
+                    time.sleep(blink_interval)
+            self.pin.value(og)
+
     def upload_list(self, values):
         """
         Upload a 2D list of values to the sheet
@@ -139,20 +168,26 @@ class Simple_google_handler:
 
         cell_range = f'{start}:{end}'
 
+        self.blink(2,2,0.5,0.1)
         gc.collect()
         mem_tracker.append(gc.mem_free())
+        self.blink(2,3,0.5,0.1)
 
         self.get_jwt()
 
+        self.blink(2,2,0.5,0.1)
         gc.collect()
         mem_tracker.append(gc.mem_free())
+        self.blink(2,3,0.5,0.1)
 
         print("upload_list: about to update_range")
         r = api.update_range(self.jwt, self.sheet_id, self.sheet_name, cell_range=cell_range, values=values)
         print("upload_list: done update_range")
 
+        self.blink(2,2,0.5,0.1)
         gc.collect()
         mem_tracker.append(gc.mem_free())
+        self.blink(2,3,0.5,0.1)
 
         update_succeeded = False
         if r != False:
@@ -193,7 +228,12 @@ class Simple_google_handler:
         Creates a spreadsheet with the given title.
         Returns new sheetId on success, False on failure.
         """
-        return api.create_spreadsheet(self.jwt, title)
+        # Create the spreadsheet
+        sheet_id = api.create_spreadsheet(self.jwt, title)
+        # Request a permission update to share it with human users
+        self.request_permissions_update()
+        # Return the new spreadsheet id
+        return sheet_id
 
     def duplicate_spreadsheet(self, old_id, new_title):
         """
@@ -281,3 +321,10 @@ class Simple_google_handler:
         Returns a URL that a user could use to access the active sheet 
         """
         return f'{self.SHEET_URI}/{self.sheet_id}'
+
+    def request_permissions_update(self):
+        """
+        Sends a request to the permissions updater endpoint serving
+        https://github.com/moults31/hydra-gsheet-permission-updater
+        """
+        requests.get(self.permission_updater_url)
