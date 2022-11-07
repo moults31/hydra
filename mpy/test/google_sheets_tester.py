@@ -9,6 +9,7 @@ Dummy app for running tests against simple_google_sheets_handler
 import sys
 
 import mpy.util.simple_google_sheets_handler as simple_google_sheets_handler
+import mpy.secrets
 
 IS_LINUX = (sys.platform == 'linux')
 
@@ -25,9 +26,13 @@ class Google_sheets_tester:
             self.wifi_cnxn.connect()
             self.pin.toggle()
 
-        google_sheets = simple_google_sheets_handler.Simple_google_handler()
-        google_sheets.get_jwt()
+        self.secrets = mpy.secrets.get_secrets()
+        self.google_sheets = simple_google_sheets_handler.Simple_google_handler()
+        self.google_sheets.get_jwt()
 
+        self.test_duplicate_spreadsheet()
+
+    def test_upload_list(self):
         # Arbitrary list of values
         values = [
             ['Landeskog', 'MacKinnon', 'Rantanen'],
@@ -35,4 +40,14 @@ class Google_sheets_tester:
             ['Newhook', 'Compher', 'Burakovsky'],
             ['Cogliano', 'Helm', "O'Connor"]
         ]
-        google_sheets.upload_list(values)
+        self.google_sheets.upload_list(values)
+
+    def test_create_spreadsheet(self):
+        sheetid = self.google_sheets.create_spreadsheet('Test_sheet')
+        return
+
+    def test_duplicate_spreadsheet(self):
+        old_id = self.secrets['gsheet_id_hydra_template']
+        new_title = 'Tug_tester'
+        sheetid = self.google_sheets.duplicate_spreadsheet(old_id, new_title)
+        return

@@ -62,10 +62,60 @@ def update_range(token, sheet_id, sheet_name, cell_range, values):
     return r.json()
 
 @exception_wrapper
-def query_big():
+def create_spreadsheet(token, title):
     """
-    Updates the specified cell_range of the specified sheet
+    Creates a spreadsheet with the given title.
+    Returns new sheetId on success, False on failure.
     """
-    r = requests.get("http://www.google.com")
-    print(r.content)
-    return r.content
+    headers = _build_header(token, content_type='application/json')
+    endpoint = f'{ENDPOINT_BASE}'
+    body = {
+        "properties": {
+            "title": title,
+            "locale": "en_US",
+            "autoRecalc": "ON_CHANGE",
+            "timeZone": "Etc/GMT",
+            "defaultFormat": {
+            }
+        },
+        "sheets": [
+        ],
+    }
+    r = requests.post(endpoint, headers=headers, json=body)
+    return r.json()['spreadsheetId']
+
+@exception_wrapper
+def copy_sheet(token, from_id, to_id, gid):
+    """
+    Copies a single sheet (gid) from within one spreadsheet (from_id)
+    to another spreadsheet (to_id)
+    """
+    headers = _build_header(token, content_type='application/json')
+    endpoint = f"{ENDPOINT_BASE}/{from_id}/sheets/{gid}:copyTo"
+    body = {
+        "destinationSpreadsheetId": to_id
+    }
+    r = requests.post(endpoint, headers=headers, json=body)
+    return r.json()
+
+@exception_wrapper
+def get_spreadsheet(token, id):
+    """
+    Returns a spreadsheet object for the spreadsheet with the specified id
+    """
+    headers = _build_header(token, content_type='application/json')
+    endpoint = f"{ENDPOINT_BASE}/{id}"
+    r = requests.get(endpoint, headers=headers)
+    return r.json()
+
+@exception_wrapper
+def batch_update(token, id, body):
+    """
+    Performs a batch update on the specified spreadsheet.
+    Caller is responsible for building up the body.
+    https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets/batchUpdate
+    """
+    headers = _build_header(token, content_type='application/json')
+    endpoint = f"{ENDPOINT_BASE}/{id}:batchUpdate"
+    r = requests.post(endpoint, headers=headers, json=body)
+    return r.json()

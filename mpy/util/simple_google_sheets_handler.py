@@ -179,3 +179,90 @@ class Simple_google_handler:
         print(mem_tracker)
 
         return rv
+
+    def create_spreadsheet(self, title):
+        """
+        Creates a spreadsheet with the given title.
+        Returns new sheetId on success, False on failure.
+        """
+        return api.create_spreadsheet(self.jwt, title)
+
+    def duplicate_spreadsheet(self, old_id, new_title):
+        """
+        Duplicates a spreadsheet with the given title.
+        Returns new sheetId on success, False on failure.
+        """
+        new_id = self.create_spreadsheet(new_title)
+
+        for gid in self.get_sheet_gids_in_spreadsheet(old_id):
+            api.copy_sheet(self.jwt, old_id, new_id, gid)
+
+        self.sanitize_new_sheet_names(new_id)
+
+        return new_id
+
+    def get_sheet_gids_in_spreadsheet(self, sheet_id):
+        """
+        Returns a list of sheet gids in the given spreadsheet
+        """
+        r = api.get_spreadsheet(self.jwt, sheet_id)
+        sheets = r['sheets']
+
+        sheet_gids = []
+        for sheet in sheets:
+            sheet_gids.append(sheet['properties']['sheetId'])
+
+        return sheet_gids
+
+    def sanitize_new_sheet_names(self, sheet_id):
+        """
+        Cleans up sheet names in a newly created spreadsheet.
+        Removes the default Sheet1.
+        Strips "Copy of" from the names of any sheets that have that.
+        """
+        r = api.get_spreadsheet(self.jwt, sheet_id)
+
+        # Build up list of batchUpdate requests
+        requests_arr = []
+        for sheet in r['sheets']:
+            title = sheet['properties']['title']
+            id = sheet['properties']['sheetId']
+
+            # Delete any sheets named SheetX
+            if 'Sheet' in title:
+                request = {
+                    "deleteSheet": {
+                        "sheetId": id
+                    }
+                }
+                requests_arr.append(request)
+
+            # Strip "Copy of " from any sheet names that have it
+            elif 'Copy of' in title:
+                new_title = title.split('Copy of ')[1]
+                request = {
+                    "updateSheetProperties": {
+                        "properties": {
+                            "title": new_title,
+                            "sheetId": id,
+                        },
+                        "fields": "title"
+                    }
+                }
+                requests_arr.append(request)
+
+        if len(requests_arr):
+            # Wrap list of requests in batchUpdate-compatible json body
+            batch_update_body = {
+                "requests": requests_arr,
+                "includeSpreadsheetInResponse": False,
+                "responseRanges": [
+                    ""
+                ],
+                "responseIncludeGridData": False
+            }
+
+            # Send the request and return the response (which will likely be unused)
+            api.batch_update(self.jwt, sheet_id, batch_update_body)
+
+        return
