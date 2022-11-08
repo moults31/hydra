@@ -12,6 +12,7 @@ import sys
 
 import mpy.secrets as secrets
 import mpy.util.simple_asana_api as api
+import mpy.hal.config as cfg
 
 IS_LINUX = (sys.platform == 'linux')
 
@@ -35,12 +36,6 @@ class Simple_asana_handler:
     TASK_NAME_JWT_STORE = 'Hydra Gsheets JWT Store'
     TASK_NAME_EXCEPTION_LOG = 'Hydra exception log'
 
-    # Mapping for unique hydras to identify themeselves
-    hydra_instance_map = {
-        '28:cd:c1:05:07:c3': 'Hydra-1',
-        'unix': 'Hydra-unix',
-    }
-
     # Mapping between Asana section names and app that should handle them
     app_map = {
         'Planned': 'coldcrash_tracker',
@@ -51,10 +46,10 @@ class Simple_asana_handler:
     def __init__(self, token=None, active_task=None):
         # Figure out which machine we are running on
         if IS_LINUX:
-            self.name = self.hydra_instance_map['unix']
+            self.name = cfg.HYDRA_NAME_MAP['unix']
         else:
             wifi_cnxn = wifi.Wifi()
-            self.name = self.hydra_instance_map[wifi_cnxn.mac]
+            self.name = cfg.HYDRA_NAME_MAP[wifi_cnxn.mac]
 
             # Make sure we're connected
             wifi_cnxn.connect_with_retry()
