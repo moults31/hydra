@@ -20,7 +20,6 @@ import mpy.util.simple_asana_handler
 import mpy.util.simple_google_sheets_handler
 import mpy.util.util as util
 
-
 IS_LINUX = (sys.platform == 'linux')
 
 if not IS_LINUX:
@@ -84,7 +83,7 @@ class Fermentation_tracker:
         while True:
             print("Trying to connect and init")
             try:
-                # Connect to wifi if running on mpy hardware, and turn in LED to indicate trying to connect
+                # Connect to wifi if running on mpy hardware, and turn on LED to indicate trying to connect
                 if not IS_LINUX:
                     self.pin.on()
                     wifi.connect_with_retry()

@@ -241,9 +241,12 @@ class Simple_asana_handler:
 
             for subtask in subtasks:
                 subtask_info = api.get_task(subtask['gid'], self.token, fields=['assignee'])
-                assignee = subtask_info['assignee']['name']
-                if assignee == self.name:
-                    return (subtask['gid'], task['gid'], task['name'])
+                try:
+                    assignee = subtask_info['assignee']['name']
+                    if assignee == self.name:
+                        return (subtask['gid'], task['gid'], task['name'])
+                except TypeError:
+                    pass
 
         return None
 
@@ -261,6 +264,10 @@ class Simple_asana_handler:
             if r:
                 subtask_gid, task_gid, task_name = r
                 api.add_comment_on_task(task_gid=subtask_gid, token=self.token, params={'text': 'On it!'})
-                return (app, section.split('In ')[1], subtask_gid, task_gid, task_name)
+                if app == 'fermentation_tracker':
+                    mode = section.split('In ')[1]
+                else:
+                    mode = section
+                return (app, mode, subtask_gid, task_gid, task_name)
 
         return None
