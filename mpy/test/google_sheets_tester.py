@@ -15,6 +15,7 @@ IS_LINUX = (sys.platform == 'linux')
 
 if not IS_LINUX:
     import mpy.networking.wifi as wifi
+    from machine import Pin
 
 class Google_sheets_tester:
     def __init__(self):
@@ -22,15 +23,14 @@ class Google_sheets_tester:
         if not IS_LINUX:
             self.pin = Pin("LED", Pin.OUT)
             self.pin.toggle()
-            self.wifi_cnxn = wifi.Wifi()
-            self.wifi_cnxn.connect()
+            wifi.connect_with_retry()
             self.pin.toggle()
 
         self.secrets = mpy.secrets.get_secrets()
         self.google_sheets = simple_google_sheets_handler.Simple_google_handler()
         self.google_sheets.get_jwt()
 
-        self.test_request_permissions_update()
+        self.test_upload_list()
 
     def test_upload_list(self):
         # Arbitrary list of values

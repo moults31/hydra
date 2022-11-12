@@ -36,8 +36,7 @@ class Simple_google_handler:
     mem_tracker = []
     mem_free_after_gc_prev = 0
 
-    def __init__(self, row_idx=1, new_sheet_name=None, subsheet='Primary'):
-        self.row_idx = row_idx
+    def __init__(self, new_sheet_name=None, existing_sheet_name='', subsheet='Sheet1'):
         self.sheet_name = subsheet
         self.asana = asana.Simple_asana_handler()
         self.jwt = self.asana.get_jwt()
@@ -46,17 +45,22 @@ class Simple_google_handler:
 
         self.permission_updater_url = _secrets['hydra_permission_updater_url']
 
-        if new_sheet_name:
+        # If the existing sheet name is valid then use it
+        if self.SHEET_URI in existing_sheet_name:
+            self.sheet_id = existing_sheet_name.split(f'{self.SHEET_URI}/')[1]
+            print(f'Using existing sheet {self.sheet_id}')
+
+        # Otherwise create a new one with the specified name if provided
+        elif new_sheet_name:
             new_sheet_name_sanitized = new_sheet_name.replace(' ', '_')
             print(f'Creating new sheet with name {new_sheet_name_sanitized} ...')
             self.sheet_id = self.duplicate_spreadsheet(_secrets['gsheet_id_hydra_template'], new_sheet_name_sanitized)
             print(f'Done, new id {self.sheet_id}')
+
+        # If no new name provided then just use the default sandbox sheet
         else:
             self.sheet_id = _secrets['gsheet_id_default']
             print(f'Using default sheet {self.sheet_id}')
-
-        if self.row_idx == 1:
-            header_uploaded = self.upload_header()
 
         # Init mem tracking
         gc.collect()
@@ -121,24 +125,7 @@ class Simple_google_handler:
             if not 'error' in r.keys():
                 update_succeeded = True
 
-        if update_succeeded:
-            # Start from row 2 now since header occupies row 1
-            self.row_idx = 2
-
         return update_succeeded
-
-    def blink(self, n_periods, n_blinks_per_period, period, blink_interval):
-        if not IS_LINUX:
-            og = self.pin.value()
-            for _ in range(n_periods):
-                self.pin.off()
-                time.sleep(period)
-                for _ in range(n_blinks_per_period):
-                    self.pin.on()
-                    time.sleep(blink_interval)
-                    self.pin.off()
-                    time.sleep(blink_interval)
-            self.pin.value(og)
 
     def upload_list(self, values):
         """
@@ -146,8 +133,6 @@ class Simple_google_handler:
         """
         # api.query_big()
         print("Trying upload_list")
-        shape = len(values), len(values[0])
-
 
         # If mem_free dropped by a lot, log the mem_tracker from the previous iter
         mem_tracker = []
@@ -161,62 +146,34 @@ class Simple_google_handler:
         # Remember mem_free_after_gc for next iteration
         self.mem_free_after_gc_prev = mem_free_after_gc
 
-        # Start at [next row index, first index]
-        # End at [height of a sample + next row index, width of a sample]
-        start = self._rowcol_to_a1(self.row_idx, 1)
-        end = self._rowcol_to_a1(self.row_idx + shape[0], shape[1])
-
+        # We will append after a dummy table at the first non-header cell
+        start = self._rowcol_to_a1(2, 1)
+        end = self._rowcol_to_a1(2, 1)
         cell_range = f'{start}:{end}'
 
-        self.blink(2,2,0.5,0.1)
-        gc.collect()
-        mem_tracker.append(gc.mem_free())
-        self.blink(2,3,0.5,0.1)
 
         self.get_jwt()
 
-        self.blink(2,2,0.5,0.1)
-        gc.collect()
-        mem_tracker.append(gc.mem_free())
-        self.blink(2,3,0.5,0.1)
 
-        print("upload_list: about to update_range")
-        r = api.update_range(self.jwt, self.sheet_id, self.sheet_name, cell_range=cell_range, values=values)
-        print("upload_list: done update_range")
-
-        self.blink(2,2,0.5,0.1)
-        gc.collect()
-        mem_tracker.append(gc.mem_free())
-        self.blink(2,3,0.5,0.1)
+        print("upload_list: about to append_range")
+        r = api.append_range(self.jwt, self.sheet_id, self.sheet_name, cell_range=cell_range, values=values)
+        print("upload_list: done append_range")
 
         update_succeeded = False
         if r != False:
             if not 'error' in r.keys():
                 update_succeeded = True
 
+        # Force garbage collection since r can take up a ton of RAM
+        gc.collect()
+        mem_tracker.append(gc.mem_free())
+
         rv = False
 
         # TODO: We shouldn't block sensor samples on these retries
         if update_succeeded != False:
-            self.row_idx += shape[0]
             print('upload_list: Success!')
             rv = True
-        # else:
-        #     for i in range(10):
-        #         print(f'Retry #{i+1}...')
-        #         self.get_jwt()
-        #         r = api.update_range(self.jwt, self.sheet_id, sheet_name, cell_range=cell_range, values=values)
-                
-        #         update_succeeded = False
-        #         if r != False:
-        #             if not 'error' in r.keys():
-        #                 update_succeeded = True
-                
-        #         if update_succeeded != False:
-        #             self.row_idx += shape[0]
-        #             print('upload_list: Success!')
-        #             return True
-        #         time.sleep(5)
 
         self.mem_tracker = mem_tracker
         print(mem_tracker)

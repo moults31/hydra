@@ -25,7 +25,7 @@ if IS_LINUX:
 else:
     # Determine global unique hydra name based on mac address
     import mpy.networking.wifi as wifi
-    mac = wifi.Wifi().mac
+    mac = wifi.MAC
     NAME = HYDRA_NAME_MAP[mac]
 
     # Declare hardware configuration per physical hydra instance

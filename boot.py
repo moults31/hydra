@@ -6,6 +6,8 @@ import sys
 
 import mpy.main
 
+import mpy.util.util as util
+
 IS_LINUX = (sys.platform == 'linux')
 
 if not IS_LINUX:
@@ -19,11 +21,7 @@ if __name__ == '__main__':
     auto_run = True
 
     if not IS_LINUX:
-        # Check if USB peripheral is connected. Credit: https://forum.micropython.org/viewtopic.php?t=10814
-        SIE_STATUS=const(0x50110000+0x50)
-        CONNECTED=const(1<<16)
-        SUSPENDED=const(1<<4)
-        if (machine.mem32[SIE_STATUS] & (CONNECTED | SUSPENDED))==CONNECTED:
+        if util.get_usb_connected():
             # If USB is connected then we want the REPL so don't auto run main
             auto_run = False
 

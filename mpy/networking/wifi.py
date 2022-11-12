@@ -18,92 +18,83 @@ from machine import Pin
 
 import mpy.secrets
 
-class Wifi:
-    def __init__(self):
-        """
-        Establish context for wifi connection
-        """
-        # Grab ssid and password from user-populated secrets
-        self.secrets = mpy.secrets.get_secrets()
-        self.ssid = self.secrets['ssid']
-        self.password = self.secrets['password']
-        self.wlan = network.WLAN(network.STA_IF)
-        self.UTC_OFFSET = -7 * 60 * 60
-        self.pin = Pin("LED", Pin.OUT)
-        self.mac = ubinascii.hexlify(self.wlan.config('mac'),':').decode()
-        # self.connected = False
+"""
+Establish context for wifi connection
+"""
+# Grab ssid and PASSWORD from user-populated secrets
+SECRETS = mpy.secrets.get_secrets()
+SSID = SECRETS['ssid']
+PASSWORD = SECRETS['password']
+WLAN = network.WLAN(network.STA_IF)
+UTC_OFFSET = -7 * 60 * 60
+PIN = Pin("LED", Pin.OUT)
+MAC = ubinascii.hexlify(WLAN.config('mac'),':').decode()
 
-    def connect_with_retry(self):
-        max_retries = 5
-        retry = 0
+def connect_with_retry():
+    max_retries = 5
+    retry = 0
 
-        while retry < max_retries:
-            try:
-                self.connect()
-                return True
-            except:
-                retry += 1
-                self.disconnect()
-            for i in range(30):
-                self.pin.toggle()
-                time.sleep(0.5)
-            self.pin.on()
+    while retry < max_retries:
+        try:
+            connect()
+            return True
+        except:
+            retry += 1
+            disconnect()
+        for i in range(30):
+            PIN.toggle()
+            time.sleep(0.5)
+        PIN.on()
 
-        return False
+    return False
 
-    def connect(self):
-        """
-        Connect to wifi.
-        """
-        # if self.connected:
-        #     print(f"Already connected to {self.ssid}")
-        #     return
+def connect():
+    """
+    Connect to wifi.
+    """
+    print(f"Trying to connect to {SSID}")
 
-        print(f"Trying to connect to {self.ssid}")
+    if WLAN.isconnected():
+        print("Success - Already connected")
+        return
 
-        if self.wlan.isconnected():
-            return
+    WLAN.active(True)
+    WLAN.connect(SSID, PASSWORD)
+    time.sleep(5)
 
-        self.wlan.active(True)
-        self.wlan.connect(self.ssid, self.password)
-        time.sleep(5)
+    # Wait for connect or fail
+    max_wait = 10
+    while max_wait > 0:
+        print('.')
+        if WLAN.status() < 0 or WLAN.status() >= 3:
+            break
+        max_wait -= 1
+        time.sleep(1)
 
-        # Wait for connect or fail
-        max_wait = 10
-        while max_wait > 0:
-            print('.')
-            if self.wlan.status() < 0 or self.wlan.status() >= 3:
-                break
-            max_wait -= 1
-            # self.pin.toggle()
-            time.sleep(1)
+    # Handle connection error
+    if WLAN.status() != 3:
+        raise RuntimeError('network connection failed')
+    else:
+        print(f'Connected to {SSID}')
+        for i in range(100):
+            time.sleep(0.1)
+            PIN.toggle()
+        PIN.on()
+        ntp_sync()
 
-        # Handle connection error
-        if self.wlan.status() != 3:
-            raise RuntimeError('network connection failed')
-        else:
-            print(f'Connected to {self.ssid}')
-            # self.connected = True
-            for i in range(100):
-                time.sleep(0.1)
-                self.pin.toggle()
-            self.pin.on()
-            self.ntp_sync()
+def disconnect():
+    """
+    Disconnect from wifi
+    """
+    # if connected:
+    WLAN.disconnect()
+    WLAN.active(False)
 
-    def disconnect(self):
-        """
-        Disconnect from wifi
-        """
-        # if self.connected:
-        self.wlan.disconnect()
-        self.wlan.active(False)
-            # self.connected = False
-
-    def ntp_sync(self):
-        """
-        Sync up to current time in Pacific timezone
-        """
-        ntptime.settime()
-        actual_time = time.localtime(time.time() + self.UTC_OFFSET)
-        print("NTP synced. Actual time:")
-        print(actual_time)
+def ntp_sync():
+    """
+    Sync up to current time in Pacific timezone
+    """
+    ntptime.settime()
+    actual_time = time.localtime(time.time() + UTC_OFFSET)
+    print("NTP synced. Actual time:")
+    print(actual_time)

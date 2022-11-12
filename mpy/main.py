@@ -10,6 +10,8 @@ import mpy.app.fermentation_tracker as fermentation_tracker
 import mpy.app.coldcrash_tracker as coldcrash_tracker
 
 import mpy.util.simple_asana_handler as asana_handler
+import mpy.util.util as util
+
 
 import mpy.test.asana_tester as asana_tester
 import mpy.test.google_sheets_tester as google_sheets_tester
@@ -19,13 +21,13 @@ import mpy.test.sensor_tester as sensor_tester
 IS_LINUX = (sys.platform == 'linux')
 
 if not IS_LINUX:
+    import mpy.networking.wifi as wifi
+
     from machine import Pin
     pin = Pin("LED", Pin.OUT)
 
 
 def main():
-    if not IS_LINUX:
-        os.remove('boot.py')
     print(micropython.mem_info())
 
     FORCE_APP = False
@@ -40,18 +42,34 @@ def main():
         subtask_gid = None
         task_name = None
     else:
-        app, mode, subtask_gid, task_name = decide_on_app()
+        backoff_duration_min = 1
+        while True:
+            try:
+                if not IS_LINUX:
+                    wifi.connect_with_retry()
+                print("Trying to decide on app...")
+                app, mode, subtask_gid, task_gid, task_name = decide_on_app()
+                break
+
+            except ValueError as e:
+                print("Error deciding on app. Details:")
+                print(e)
+                print(f"Sleeping for {backoff_duration_min} minutes before retrying")
+                util.prepare_and_sleep(backoff_duration_min)
+                # Exponentially increase backoff duration
+                backoff_duration_min *= 2
 
     print("Starting", app)
 
     if app == 'fermentation_tracker':
         ft = fermentation_tracker.Fermentation_tracker(
             mode=mode,
-            active_task_gid=subtask_gid,
+            active_task_gid=task_gid,
+            active_subtask_gid=subtask_gid,
             active_parent_task_name=task_name,
             warning_thresh_lux=15.0,
             warning_thresh_temp=26.0,
-            sample_period_sec=60,
+            sample_period_sec=5,
             upload_buf_quota=1
         )
         ft.run_blocking()

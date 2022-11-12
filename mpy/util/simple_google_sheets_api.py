@@ -61,6 +61,18 @@ def update_range(token, sheet_id, sheet_name, cell_range, values):
     r = requests.put(endpoint, headers=headers, json=body)
     return r.json()
 
+def append_range(token, sheet_id, sheet_name, cell_range, values):
+    """
+    Updates the specified cell_range of the specified sheet
+    """
+    headers = _build_header(token, content_type='application/json')
+    endpoint = f'{ENDPOINT_BASE}/{sheet_id}/values/{sheet_name}!{cell_range}:append?valueInputOption=RAW'
+    body = {
+        "values": values
+    }
+    r = requests.post(endpoint, headers=headers, json=body)
+    return r.json()
+
 @exception_wrapper
 def create_spreadsheet(token, title):
     """
@@ -99,7 +111,6 @@ def copy_sheet(token, from_id, to_id, gid):
     r = requests.post(endpoint, headers=headers, json=body)
     return r.json()
 
-@exception_wrapper
 def get_spreadsheet(token, id, fields=None):
     """
     Returns a spreadsheet object for the spreadsheet with the specified id

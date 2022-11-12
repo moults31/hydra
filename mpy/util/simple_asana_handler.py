@@ -43,16 +43,15 @@ class Simple_asana_handler:
         'In Secondary': 'fermentation_tracker'
     }
 
-    def __init__(self, token=None, active_task=None):
+    def __init__(self, token=None, active_task=None, active_subtask=None):
         # Figure out which machine we are running on
         if IS_LINUX:
             self.name = cfg.HYDRA_NAME_MAP['unix']
         else:
-            wifi_cnxn = wifi.Wifi()
-            self.name = cfg.HYDRA_NAME_MAP[wifi_cnxn.mac]
+            self.name = cfg.HYDRA_NAME_MAP[wifi.MAC]
 
             # Make sure we're connected
-            wifi_cnxn.connect_with_retry()
+            wifi.connect_with_retry()
 
         # Store personal access token
         if token:
@@ -68,6 +67,11 @@ class Simple_asana_handler:
             self.active_task_gid = active_task
         else:
             self.active_task_gid = self.get_sandbox_task_gid()
+        if active_subtask:
+            self.active_subtask_gid = active_subtask
+        else:
+            self.active_subtask_gid = self.get_sandbox_task_gid()
+
         self.jwt_task_gid = self.get_task_gid_by_name(self.TASK_NAME_JWT_STORE)
         self.exception_log_task_gid = self.get_task_gid_by_name(self.TASK_NAME_EXCEPTION_LOG)
 
@@ -108,8 +112,8 @@ class Simple_asana_handler:
             return False
 
         # Get and return specified task
-        active_task = next(task for task in tasks if task['name'] == name)
-        return active_task['gid']
+        named_task = next(task for task in tasks if task['name'] == name)
+        return named_task['gid']
 
     def get_sandbox_task_gid(self):
         """
@@ -119,6 +123,12 @@ class Simple_asana_handler:
         # TODO: Find a way to figure out which task is active for coldcrash or fermentation.
         # Maybe magic section in Asana to read from
         return self.get_task_gid_by_name(self.TASK_NAME_SANDBOX)
+
+    def get_active_task_description(self):
+        """
+        Returns the description on the active task
+        """
+        return api.get_task(task_gid=self.active_task_gid, token=self.token, fields=['notes'])['notes']
 
     def update_active_task_description(self, desc):
         """
@@ -144,6 +154,19 @@ class Simple_asana_handler:
         if not self.active_task_gid:
             self.active_task_gid = self.get_sandbox_task_gid()
         return api.add_comment_on_task(task_gid=self.active_task_gid, token=self.token, params=params)
+
+    def add_comment_on_active_subtask(self, text, is_pinned=False):
+        """
+        Adds a comment on the active subtask with user specified string text. 
+        Will pin to top of subtask if is_pinned is True.
+        """
+        params = {
+            "is_pinned": is_pinned,
+            "text": text
+        }
+        if not self.active_subtask_gid:
+            self.active_subtask_gid = self.get_sandbox_subtask_gid()
+        return api.add_comment_on_task(task_gid=self.active_subtask_gid, token=self.token, params=params)
 
     def get_jwt(self):
         """
@@ -220,7 +243,7 @@ class Simple_asana_handler:
                 subtask_info = api.get_task(subtask['gid'], self.token, fields=['assignee'])
                 assignee = subtask_info['assignee']['name']
                 if assignee == self.name:
-                    return (subtask['gid'], task['name'])
+                    return (subtask['gid'], task['gid'], task['name'])
 
         return None
 
@@ -236,8 +259,8 @@ class Simple_asana_handler:
         for section, app in self.app_map.items():
             r = self.find_assigned_subtask_in_section(section)
             if r:
-                subtask_gid, task_name = r
+                subtask_gid, task_gid, task_name = r
                 api.add_comment_on_task(task_gid=subtask_gid, token=self.token, params={'text': 'On it!'})
-                return (app, section.split('In ')[1], subtask_gid, task_name)
+                return (app, section.split('In ')[1], subtask_gid, task_gid, task_name)
 
         return None

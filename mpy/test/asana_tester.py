@@ -21,8 +21,7 @@ class Asana_tester:
         if not IS_LINUX:
             self.pin = Pin("LED", Pin.OUT)
             self.pin.toggle()
-            self.wifi_cnxn = wifi.Wifi()
-            self.wifi_cnxn.connect()
+            wifi.connect_with_retry()
             self.pin.toggle()
 
         asana = simple_asana_handler.Simple_asana_handler()

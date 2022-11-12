@@ -18,13 +18,13 @@ import mpy.hal.adapter.ambient_light_sensor
 
 import mpy.util.simple_asana_handler
 import mpy.util.simple_google_sheets_handler
+import mpy.util.util as util
 
 
 IS_LINUX = (sys.platform == 'linux')
 
 if not IS_LINUX:
     from machine import Pin
-    import picosleep
     import mpy.networking.wifi as wifi
     # from machine import Pin, WDT
 
@@ -53,6 +53,7 @@ class Fermentation_tracker:
     def __init__(self,
         mode='Primary',
         active_task_gid=None,
+        active_subtask_gid=None,
         active_parent_task_name=None,
         sample_period_sec=10,
         upload_buf_quota=10,
@@ -71,7 +72,7 @@ class Fermentation_tracker:
         # print(f"{wdt_timeout=}")
 
         # TODO: Grab timezone dynamically from secrets instead
-        self.UTC_OFFSET = -7 * 60 * 60
+        self.UTC_OFFSET = -8 * 60 * 60
 
         # Get LED pin if running on mpy hardware
         if not IS_LINUX:
@@ -86,15 +87,19 @@ class Fermentation_tracker:
                 # Connect to wifi if running on mpy hardware, and turn in LED to indicate trying to connect
                 if not IS_LINUX:
                     self.pin.on()
-                    self.wifi_cnxn = wifi.Wifi()
-                    self.wifi_cnxn.connect_with_retry()
-
+                    wifi.connect_with_retry()
 
                 # Grab resources
                 self.temp_sensor = mpy.hal.adapter.temp_sensor.Temp_sensor()
                 self.ambient_light_sensor = mpy.hal.adapter.ambient_light_sensor.Ambient_light_sensor()
-                self.asana_handler = mpy.util.simple_asana_handler.Simple_asana_handler(active_task=active_task_gid)
-                self.gsheets_handler = mpy.util.simple_google_sheets_handler.Simple_google_handler(new_sheet_name=active_parent_task_name, subsheet=mode)
+                self.asana_handler = mpy.util.simple_asana_handler.Simple_asana_handler(active_task=active_task_gid, active_subtask=active_subtask_gid)
+
+                active_task_description = self.asana_handler.get_active_task_description()
+                self.gsheets_handler = mpy.util.simple_google_sheets_handler.Simple_google_handler(
+                    new_sheet_name=active_parent_task_name,
+                    existing_sheet_name=active_task_description,
+                    subsheet=mode
+                )
 
                 # Update the active Asana task with the new Google Sheet URL
                 self.asana_handler.update_active_task_description(
@@ -109,8 +114,8 @@ class Fermentation_tracker:
             except:
                 n_init_retries += 1
                 print(f"Init retry #{n_init_retries}")
-                print("Sleeping for 4 sample periods before next retry")
-                self.prepare_and_sleep(period=self.sample_period_sec * 4)
+                print("Sleeping for 1 sample period before next retry")
+                util.prepare_and_sleep(duration=self.sample_period_sec)
 
         # Sensor value logging buffer
         self.buf = []
@@ -118,40 +123,6 @@ class Fermentation_tracker:
         # Init mem tracking
         gc.collect()
         self.mem_free_after_gc_prev = gc.mem_free()
-
-    def blink(self, n_periods, n_blinks_per_period, period, blink_interval):
-        if not IS_LINUX:
-            og = self.pin.value()
-            for _ in range(n_periods):
-                self.pin.off()
-                time.sleep(period)
-                for _ in range(n_blinks_per_period):
-                    self.pin.on()
-                    time.sleep(blink_interval)
-                    self.pin.off()
-                    time.sleep(blink_interval)
-            self.pin.value(og)
-
-    def prepare_and_sleep(self, period=None):
-        """
-        Prepare and sleep
-        """
-        if not period:
-            period = self.sample_period_sec
-
-        # Prepare for sleep
-        if not IS_LINUX:
-            print("Preparing to sleep")
-            self.wifi_cnxn.disconnect()
-            time.sleep(15)
-
-        # Sleep
-        print("Entering sleep")
-        if IS_LINUX:
-            time.sleep(period)
-        else:
-            picosleep.seconds(period)
-
 
     def run_blocking(self):
         """
@@ -190,7 +161,7 @@ class Fermentation_tracker:
             # Sleep till next step
             if not IS_LINUX:
                 self.pin.off()
-            self.prepare_and_sleep()
+            util.prepare_and_sleep(duration=self.sample_period_sec)
 
         # Upload final log
         # TODO Figure out condition for when fermentation tracking ends
@@ -215,30 +186,30 @@ class Fermentation_tracker:
 
         # self.wdt.feed()
         if not IS_LINUX:
-            # if not self.wifi_cnxn.connect_with_retry():
+            # if not wifi.connect_with_retry():
             #     # print("Couldn't connect_with_retry to wifi. Skipping this step")
             #     # return
             #     print("Couldn't connect_with_retry to wifi. Retrying once")
-            #     self.wifi_cnxn.disconnect()
+            #     wifi.disconnect()
             #     for _ in range(8):
             #         time.sleep(2)
             #         self.pin.toggle()
             #     self.pin.on()
-            #     self.wifi_cnxn = None
-            #     self.wifi_cnxn = wifi.Wifi()
-            #     if not self.wifi_cnxn.connect_with_retry():
+            #     wifi = None
+            #     wifi = wifi.Wifi()
+            #     if not wifi.connect_with_retry():
             #         print("Couldn't connect_with_retry on second try. Skipping this step.")
             #         return
 
-            self.wifi_cnxn.disconnect()
+            wifi.disconnect()
             for i in range(8):
                 time.sleep(2)
                 self.pin.toggle()
-            if not self.wifi_cnxn.connect_with_retry():
+            if not wifi.connect_with_retry():
                 print("Couldn't connect_with_retry to wifi. Skipping this step")
                 return
 
-            print(self.wifi_cnxn.wlan.ifconfig()[0])
+            # print(wifi.WLAN.ifconfig()[0])
 
         # Report previous exception if applicable, and clear if reporting was successful
         # if self.step_exception_msg != None:
@@ -260,12 +231,12 @@ class Fermentation_tracker:
         # Warn if necessary
         isconnected = True
         if not IS_LINUX:
-            isconnected = self.wifi_cnxn.wlan.isconnected()
+            isconnected = wifi.WLAN.isconnected()
         if isconnected:
-            self.blink(n_periods=5, n_blinks_per_period=2, period=0.5, blink_interval=0.2)
+            util.blink(n_periods=5, n_blinks_per_period=2, period=0.5, blink_interval=0.2)
             self.report_warning()
         else:
-            self.blink(n_periods=5, n_blinks_per_period=3, period=0.5, blink_interval=0.2)
+            util.blink(n_periods=5, n_blinks_per_period=3, period=0.5, blink_interval=0.2)
 
         self.n += 1
         print(f'Done {self.n} samples')
@@ -274,12 +245,12 @@ class Fermentation_tracker:
         # TODO Implement logic for making sure we don't run out of space for buffer!
         if len(self.buf) >= self.upload_buf_quota:
             if not IS_LINUX:
-                isconnected = self.wifi_cnxn.wlan.isconnected()
+                isconnected = wifi.WLAN.isconnected()
             if isconnected:
-                self.blink(n_periods=5, n_blinks_per_period=4, period=0.5, blink_interval=0.2)
+                util.blink(n_periods=5, n_blinks_per_period=4, period=0.5, blink_interval=0.2)
                 self.upload_and_clear_log()
             else:
-                self.blink(n_periods=5, n_blinks_per_period=5, period=0.5, blink_interval=0.2)
+                util.blink(n_periods=5, n_blinks_per_period=5, period=0.5, blink_interval=0.2)
 
 
     def report_warning(self):
@@ -297,14 +268,14 @@ class Fermentation_tracker:
                 try:
                     # Send warning to Asana
                     print("Trying to send above warning string to Asana")
-                    self.asana_handler.add_comment_on_active_task(warn_str)
+                    self.asana_handler.add_comment_on_active_subtask(warn_str)
                     self.warning_state_is_active_temp = True
-                    self.blink(n_periods=4, n_blinks_per_period=4, period=0.2, blink_interval=0.1)
+                    util.blink(n_periods=4, n_blinks_per_period=4, period=0.2, blink_interval=0.1)
 
                 except:
                     # TODO: Set a flag to warn on the next wake
                     print("Failed to send warning, warning_state_is_active_temp not set.")
-                    self.blink(n_periods=4, n_blinks_per_period=3, period=0.2, blink_interval=0.1)
+                    util.blink(n_periods=4, n_blinks_per_period=3, period=0.2, blink_interval=0.1)
         else:
             # Reset warning state
             self.warning_state_is_active_temp = False
@@ -317,13 +288,13 @@ class Fermentation_tracker:
 
                 try:
                     # Send warning to Asana
-                    self.asana_handler.add_comment_on_active_task(warn_str)
+                    self.asana_handler.add_comment_on_active_subtask(warn_str)
                     self.warning_state_is_active_lux = True
-                    self.blink(n_periods=4, n_blinks_per_period=4, period=0.2, blink_interval=0.1)
+                    util.blink(n_periods=4, n_blinks_per_period=4, period=0.2, blink_interval=0.1)
                 except:
                     # TODO: Set a flag to warn on the next wake
                     print("Failed to send warning, warning_state_is_active_lux not set.")
-                    self.blink(n_periods=4, n_blinks_per_period=3, period=0.2, blink_interval=0.1)
+                    util.blink(n_periods=4, n_blinks_per_period=3, period=0.2, blink_interval=0.1)
         else:
             # Reset warning state
             self.warning_state_is_active_lux = False
@@ -345,13 +316,13 @@ class Fermentation_tracker:
             if upload_success != False:
                 self.buf = []
                 print("Done uploading")
-                self.blink(n_periods=4, n_blinks_per_period=6, period=0.2, blink_interval=0.1)
+                util.blink(n_periods=4, n_blinks_per_period=6, period=0.2, blink_interval=0.1)
             else:
                 print("Upload returned false. Will keep buffer intact and try again next sample.")
-                self.blink(n_periods=4, n_blinks_per_period=5, period=0.2, blink_interval=0.1)
+                util.blink(n_periods=4, n_blinks_per_period=5, period=0.2, blink_interval=0.1)
         # except:
         #     print("Upload threw exception. Will keep buffer intact and try again next sample.")
-        #     self.blink(n_periods=4, n_blinks_per_period=5, period=0.2, blink_interval=0.1)
+        #     util.blink(n_periods=4, n_blinks_per_period=5, period=0.2, blink_interval=0.1)
 
         except BaseException as e:
             #     # TODO: blink pattern
