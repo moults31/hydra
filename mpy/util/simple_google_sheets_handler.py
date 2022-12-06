@@ -131,7 +131,6 @@ class Simple_google_handler:
         """
         Upload a 2D list of values to the sheet
         """
-        # api.query_big()
         print("Trying upload_list")
 
         # If mem_free dropped by a lot, log the mem_tracker from the previous iter
@@ -151,9 +150,7 @@ class Simple_google_handler:
         end = self._rowcol_to_a1(2, 1)
         cell_range = f'{start}:{end}'
 
-
         self.get_jwt()
-
 
         print("upload_list: about to append_range")
         r = api.append_range(self.jwt, self.sheet_id, self.sheet_name, cell_range=cell_range, values=values)

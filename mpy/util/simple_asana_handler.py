@@ -79,6 +79,7 @@ class Simple_asana_handler:
         """
         Returns the gid for the personal projects workspace of the authenticated user
         """
+        gc.collect()
         me = api.get_me(self.token)
         personal_projects = next(workspace for workspace in me['workspaces'] if workspace['name'] == self.WORKSPACE_NAME)
         return personal_projects['gid']
@@ -92,6 +93,7 @@ class Simple_asana_handler:
         pp_gid = self.get_personal_projects_gid()
 
         # Get all the projects in that workspace
+        gc.collect()
         projects = api.get_projects_for_workspace(workspace_gid=pp_gid, token=self.token)
 
         if not projects:
@@ -106,6 +108,7 @@ class Simple_asana_handler:
         Returns the gid for the named task
         Returns False if failed to fetch it
         """
+        gc.collect()
         tasks = api.get_tasks_for_project(project_gid=self.brew_project_gid, token=self.token)
 
         if not tasks:
@@ -128,6 +131,7 @@ class Simple_asana_handler:
         """
         Returns the description on the active task
         """
+        gc.collect()
         return api.get_task(task_gid=self.active_task_gid, token=self.token, fields=['notes'])['notes']
 
     def update_active_task_description(self, desc):
@@ -140,6 +144,7 @@ class Simple_asana_handler:
         if not self.active_task_gid:
             self.active_task_gid = self.get_sandbox_task_gid()
 
+        gc.collect()
         return api.update_task(task_gid=self.active_task_gid, token=self.token, params=params)
 
     def add_comment_on_active_task(self, text, is_pinned=False):
@@ -153,6 +158,7 @@ class Simple_asana_handler:
         }
         if not self.active_task_gid:
             self.active_task_gid = self.get_sandbox_task_gid()
+        gc.collect()
         return api.add_comment_on_task(task_gid=self.active_task_gid, token=self.token, params=params)
 
     def add_comment_on_active_subtask(self, text, is_pinned=False):
@@ -166,6 +172,7 @@ class Simple_asana_handler:
         }
         if not self.active_subtask_gid:
             self.active_subtask_gid = self.get_sandbox_subtask_gid()
+        gc.collect()
         return api.add_comment_on_task(task_gid=self.active_subtask_gid, token=self.token, params=params)
 
     def get_jwt(self):
@@ -189,6 +196,7 @@ class Simple_asana_handler:
         }
         if not self.jwt_task_gid:
             self.jwt_task_gid = self.get_task_gid_by_name(self.TASK_NAME_JWT_STORE)
+        gc.collect()
         return api.update_task(task_gid=self.jwt_task_gid, token=self.token, params=params)
 
     def update_exception_log(self, msg):
@@ -200,6 +208,7 @@ class Simple_asana_handler:
         }
         if not self.exception_log_task_gid:
             self.exception_log_task_gid = self.get_sandbox_task_gid()
+        gc.collect()
         return api.add_comment_on_task(task_gid=self.exception_log_task_gid, token=self.token, params=params)
 
     def get_section_gid_by_name(self, name):
@@ -207,6 +216,7 @@ class Simple_asana_handler:
         Returns the gid for the named task
         Returns False if failed to fetch it
         """
+        gc.collect()
         tasks = api.get_sections_for_project(project_gid=self.brew_project_gid, token=self.token)
 
         if not tasks:
@@ -220,12 +230,14 @@ class Simple_asana_handler:
         """
         Returns a list of tasks in the specified section
         """
+        gc.collect()
         return api.get_tasks_for_section(section_gid, self.token)
 
     def get_subtasks_for_task(self, task_gid):
         """
         Returns a list of subtasks in the specified task
         """
+        gc.collect()
         return api.get_subtasks_for_task(task_gid, self.token)
 
     def find_assigned_subtask_in_section(self, section_name):
@@ -240,6 +252,7 @@ class Simple_asana_handler:
             subtasks = self.get_subtasks_for_task(task['gid'])
 
             for subtask in subtasks:
+                gc.collect()
                 subtask_info = api.get_task(subtask['gid'], self.token, fields=['assignee'])
                 try:
                     assignee = subtask_info['assignee']['name']
@@ -268,6 +281,7 @@ class Simple_asana_handler:
                     mode = section.split('In ')[1]
                 else:
                     mode = section
+                print(f"Decided on {app} with mode {mode}")
                 return (app, mode, subtask_gid, task_gid, task_name)
 
         return None
