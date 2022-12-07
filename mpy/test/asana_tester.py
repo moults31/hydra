@@ -5,11 +5,25 @@
 """
 Dummy app for running tests against simple_asana.py
 """
+import sys
 
 import mpy.util.simple_asana_handler as simple_asana_handler
 
+IS_LINUX = (sys.platform == 'linux')
+
+if not IS_LINUX:
+    from machine import Pin
+    import mpy.networking.wifi as wifi
+
 class Asana_tester:
     def __init__(self):
+        # Connect to wifi
+        if not IS_LINUX:
+            self.pin = Pin("LED", Pin.OUT)
+            self.pin.toggle()
+            wifi.connect_with_retry()
+            self.pin.toggle()
+
         asana = simple_asana_handler.Simple_asana_handler()
 
         # Arbitrary task description for testing
@@ -21,3 +35,6 @@ class Asana_tester:
         comment_text = "I DRAW"
         r = asana.add_comment_on_active_task(text=comment_text, is_pinned=True)
         print(r)
+
+        assigned_task = asana.find_assigned_subtask_in_section('In Primary')
+        print(assigned_task)

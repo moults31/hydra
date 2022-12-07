@@ -9,6 +9,7 @@ Some snippets adapted from https://github.com/adafruit/Adafruit_CircuitPython_VE
 """
 
 import struct
+import time
 
 import mpy.hal.adapter.ambient_light_sensor
 import mpy.hal.config as cfg
@@ -90,12 +91,16 @@ class Ambient_light_sensor_driver(mpy.hal.adapter.ambient_light_sensor.Ambient_l
         self.ALS_GAIN = als_gain
         self.ALS_IT = als_it
 
+        print("Instantiating i2c object")
+
         # Init i2c object, as configured in config.py
         self._i2c = I2C(
             cfg.AMBIENT_LIGHT_SENSOR_I2C_ID,
             scl=Pin(cfg.AMBIENT_LIGHT_SENSOR_I2C_SCL_PIN),
             sda=Pin(cfg.AMBIENT_LIGHT_SENSOR_I2C_SDA_PIN),
             freq=cfg.AMBIENT_LIGHT_SENSOR_I2C_FREQ)
+
+        print("Done instantiating i2c object")
 
         # Build the value we will write to register CONF_0.
         # The most important thing here is writing 0 to SD, to "disable shutdown" and enable the ALS
@@ -107,8 +112,11 @@ class Ambient_light_sensor_driver(mpy.hal.adapter.ambient_light_sensor.Ambient_l
             self._apply_mask(self.ALS_GAIN, self.REG_WIDTH_CONF_0_ALS_GAIN, self.REG_OFFSET_CONF_0_ALS_GAIN)
         )
 
+        print("Trying to write cfg to veml7700")
+
         # Write it.
         self._i2c.writeto_mem(self.DEV_ADDR, self.REG_ADDR_CONF_0, config_cmd_val.to_bytes(2, 'big'))
+        print("Write success")
 
     def read_light(self):
         """
